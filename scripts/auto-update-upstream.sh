@@ -6,7 +6,7 @@ git checkout -b automerge
 
 
 # Merge upstream/main with the current branch
-git merge upstream/main
+git merge upstream/main --allow-unrelated-histories 
 cd rust
 #cargo build --locked --release -p processor
 
