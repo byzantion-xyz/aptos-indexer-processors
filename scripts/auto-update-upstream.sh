@@ -14,9 +14,9 @@ cd rust
 if [ $? -eq 0 ]; then
     cd ..
     git commit -a -m "Auto-merge"
-    git push -f -u origin automerge
+    git push -f origin automerge
     
-    gh pr create --title "Autoupdate" --body "The upstream/main was merged and built successfully." --base main --head automerge
+    gh pr create --fill --base main --head automerge
 else
     echo "Build failed"
     exit 1
