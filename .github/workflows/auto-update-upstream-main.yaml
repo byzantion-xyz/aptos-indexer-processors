@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  Rust:
+  autoupdate:
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
