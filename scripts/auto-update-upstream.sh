@@ -1,4 +1,5 @@
 #!/bin/bash
+git checkout main
 git checkout -b automerge
 
 # Add new remote named 'upstream'
@@ -16,7 +17,7 @@ if [ $? -eq 0 ]; then
     git commit -a -m "Auto-merge"
     git push -f -u origin automerge
     
-    gh pr create --title "Autoupdate" --body "The upstream/main was merged and built successfully." --base main --head automerge --dry-run
+    gh pr create --title "Autoupdate" --body "The upstream/main was merged and built successfully." --base main --head automerge
 else
     echo "Build failed"
     exit 1
