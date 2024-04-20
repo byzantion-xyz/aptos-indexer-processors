@@ -20,7 +20,7 @@ if [ $? -eq 0 ]; then
     git commit -a -m "Auto-merge"
     git push -f -u origin automerge
     
-    gh pr create --title "Autoupdate" --body "The upstream/main was merged and built successfully."
+    gh pr create --title "Autoupdate" --body "The upstream/main was merged and built successfully." --base origin/main
 else
     echo "Build failed"
     exit 1
