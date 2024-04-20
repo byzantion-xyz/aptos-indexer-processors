@@ -1,7 +1,5 @@
 #!/bin/bash
-git config --global user.email "bot@indexer.xyz"
-git config --global user.name "Bot"
-
+git fetch origin || :
 git checkout -b automerge
 
 # Add new remote named 'upstream'
