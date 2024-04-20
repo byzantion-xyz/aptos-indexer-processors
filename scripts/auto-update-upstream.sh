@@ -5,7 +5,7 @@ git checkout -b automerge
 git remote add upstream "https://github.com/aptos-labs/aptos-indexer-processors.git"
 
 # Merge upstream/main with the current branch
-git fetch upstream main:refs/remotes/upstream/upstream_main
+git fetch upstream main:upstream_main
 git merge upstream_main
 cd rust
 #cargo build --locked --release -p processor
