@@ -25,5 +25,6 @@ jobs:
           git config --global user.name "avbel"
       - run: bash scripts/auto-update-upstream.sh
         env:
+          GH_USER: avbel
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         
