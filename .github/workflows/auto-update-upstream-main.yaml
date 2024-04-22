@@ -21,10 +21,10 @@ jobs:
           ref: main
           token: ${{ secrets.GH_TOKEN }}
       - run: |
-          git config --global user.email "belchikovs@gmail.com"
-          git config --global user.name "avbel"
+          git config --global user.email "${{ secrets.GH_EMAIL }}"
+          git config --global user.name "${{ secrets.GH_USER }}"
       - run: bash scripts/auto-update-upstream.sh
         env:
-          GH_USER: avbel
+          GH_USER: ${{ secrets.GH_USER }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         
