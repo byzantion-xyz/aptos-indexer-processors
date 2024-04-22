@@ -20,6 +20,9 @@ jobs:
           repository: byzantion-xyz/aptos-indexer-processors
           ref: main
           token: ${{ secrets.GH_TOKEN }}
+      - run: |
+          git config --global user.email "belchikovs@gmail.com"
+          git config --global user.name "avbel"
       - run: bash scripts/auto-update-upstream.sh
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
