@@ -21,6 +21,8 @@ pub mod stake_processor;
 pub mod token_processor;
 pub mod token_v2_processor;
 pub mod transaction_metadata_processor;
+pub mod mercato_token_processor;
+pub mod mercato_token_v2_processor;
 pub mod user_transaction_processor;
 
 use self::{
@@ -37,6 +39,8 @@ use self::{
     stake_processor::{StakeProcessor, StakeProcessorConfig},
     token_processor::{TokenProcessor, TokenProcessorConfig},
     token_v2_processor::{TokenV2Processor, TokenV2ProcessorConfig},
+    mercato_token_processor::{MercatoTokenProcessor, MercatoTokenProcessorConfig},
+    mercato_token_v2_processor::{MercatoTokenV2Processor, MercatoTokenV2ProcessorConfig},
     transaction_metadata_processor::TransactionMetadataProcessor,
     user_transaction_processor::UserTransactionProcessor,
 };
@@ -194,6 +198,8 @@ pub enum ProcessorConfig {
     StakeProcessor(StakeProcessorConfig),
     TokenProcessor(TokenProcessorConfig),
     TokenV2Processor(TokenV2ProcessorConfig),
+    MercatoTokenProcessor(MercatoTokenProcessorConfig),
+    MercatoTokenV2Processor(MercatoTokenV2ProcessorConfig),
     TransactionMetadataProcessor,
     UserTransactionProcessor,
 }
@@ -237,6 +243,8 @@ pub enum Processor {
     StakeProcessor,
     TokenProcessor,
     TokenV2Processor,
+    MercatoTokenProcessor,
+    MercatoTokenV2Processor,
     TransactionMetadataProcessor,
     UserTransactionProcessor,
 }

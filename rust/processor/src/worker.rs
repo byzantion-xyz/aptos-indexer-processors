@@ -13,6 +13,8 @@ use crate::{
         nft_metadata_processor::NftMetadataProcessor, objects_processor::ObjectsProcessor,
         stake_processor::StakeProcessor, token_processor::TokenProcessor,
         token_v2_processor::TokenV2Processor,
+        mercato_token_processor::MercatoTokenProcessor,
+        mercato_token_v2_processor::MercatoTokenV2Processor,
         transaction_metadata_processor::TransactionMetadataProcessor,
         user_transaction_processor::UserTransactionProcessor, ProcessingResult, Processor,
         ProcessorConfig, ProcessorTrait,
@@ -739,6 +741,16 @@ pub fn build_processor(
             per_table_chunk_sizes,
         )),
         ProcessorConfig::TokenV2Processor(config) => Processor::from(TokenV2Processor::new(
+            db_pool,
+            config.clone(),
+            per_table_chunk_sizes,
+        )),
+        ProcessorConfig::MercatoTokenProcessor(config) => Processor::from(MercatoTokenProcessor::new(
+            db_pool,
+            config.clone(),
+            per_table_chunk_sizes,
+        )),
+        ProcessorConfig::MercatoTokenV2Processor(config) => Processor::from(MercatoTokenV2Processor::new(
             db_pool,
             config.clone(),
             per_table_chunk_sizes,
