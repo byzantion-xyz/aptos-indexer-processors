@@ -8,7 +8,7 @@ git branch -r
 # Merge upstream/main with the current branch
 git merge upstream/main --no-edit --commit
 cd rust
-#cargo build --locked --release -p processor
+cargo build --locked --release -p processor
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
@@ -20,7 +20,7 @@ if [ $? -eq 0 ]; then
     git commit -a -m "Auto-merge"
     git push -f origin automerge
     gh repo set-default byzantion-xyz/aptos-indexer-processors
-    gh pr create --fill --base main --head automerge
+    gh pr create --fill --base main --head automerge || :
 else
     echo "Build failed"
     exit 1
