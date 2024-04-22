@@ -13,6 +13,9 @@ cargo build --locked --release -p processor
 # Check if the build was successful
 if [ $? -eq 0 ]; then
     cd ..
+    pwd
+    git push origin -d automerge || :
+    git branch -d automerge || :
     git checkout -b automerge
     git commit -a -m "Auto-merge"
     git push -f origin automerge
