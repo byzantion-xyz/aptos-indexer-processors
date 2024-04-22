@@ -1,7 +1,8 @@
 #!/bin/bash
+git clone https://github.com/byzantion-xyz/aptos-indexer-processors.git upstream
+cd upstream
 git remote add upstream "https://github.com/aptos-labs/aptos-indexer-processors.git"
 git fetch upstream main
-git checkout main
 
 git branch -r
 # Merge upstream/main with the current branch
