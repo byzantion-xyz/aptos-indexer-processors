@@ -280,6 +280,13 @@ impl ProcessorTrait for MercatoTokenProcessor {
         end_version: u64,
         _: Option<u64>,
     ) -> anyhow::Result<ProcessingResult> {
+        tracing::info!(
+            name = self.name(),
+            start_version = start_version,
+            end_version = end_version,
+            "Processing new transactions",
+        );
+        
         let processing_start = std::time::Instant::now();
         let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
 
@@ -391,6 +398,12 @@ impl ProcessorTrait for MercatoTokenProcessor {
         .await;
 
         let db_insertion_duration_in_secs = db_insertion_start.elapsed().as_secs_f64();
+        tracing::info!(
+            name = self.name(),
+            start_version = start_version,
+            end_version = end_version,
+            "Finished processing new transactions",
+        );
         match tx_result {
             Ok(_) => Ok(ProcessingResult {
                 start_version,
