@@ -7,12 +7,12 @@ git fetch upstream main
 git branch -r
 # Merge upstream/main with the current branch
 git merge upstream/main --no-edit --commit
-#cd rust
-#cargo build --locked --release -p processor
+cd rust
+cargo build --locked --release -p processor
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
-    #cd ..
+    cd ..
     git checkout -b automerge
     git commit -a -m "Auto-merge"
     git push -f origin automerge
