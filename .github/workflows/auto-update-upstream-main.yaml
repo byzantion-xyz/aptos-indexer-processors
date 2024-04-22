@@ -16,9 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: |
-          git config --global user.email "avbel@indexer.xyz"
-          git config --global user.name "avbel"
+        with:
+          repository: byzantion-xyz/aptos-indexer-processors
+          ref: main
+          token: ${{ secrets.GH_TOKEN }}
       - run: bash scripts/auto-update-upstream.sh
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
