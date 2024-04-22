@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - run: |
+          git config --global user.email "avbel@indexer.xyz"
+          git config --global user.name "avbel"
       - run: bash scripts/auto-update-upstream.sh
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
