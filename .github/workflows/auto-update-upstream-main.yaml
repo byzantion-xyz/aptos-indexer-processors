@@ -2,6 +2,8 @@ name: "Auto update to fresh upstream"
 on:
   # Allow us to run this specific workflow without a PR
   workflow_dispatch:
+  schedule:
+    - cron: "30 5 * * 1" 
 
 # cancel redundant builds
 concurrency:

@@ -20,6 +20,7 @@ if [ $? -eq 0 ]; then
     git commit -a -m "Auto-merge"
     git push -f origin automerge
     gh repo set-default byzantion-xyz/aptos-indexer-processors
+    gh pr close automerge || :
     gh pr create --fill --base main --head automerge || :
 else
     echo "Build failed"
