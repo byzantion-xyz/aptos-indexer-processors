@@ -5,17 +5,17 @@ git checkout main
 
 
 # Merge upstream/main with the current branch
-git merge upstream/main --no-edit
-cd rust
+git merge upstream/main --no-edit --commit
+#cd rust
 #cargo build --locked --release -p processor
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
-    cd ..
+    #cd ..
     git checkout -b automerge
     git commit -a -m "Auto-merge"
     git push -f origin automerge
-    
+    gh repo set-default byzantion-xyz/aptos-indexer-processors
     gh pr create --fill --base main --head automerge
 else
     echo "Build failed"
