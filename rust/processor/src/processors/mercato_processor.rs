@@ -1,6 +1,5 @@
 use super::{
-    events_processor::EventsProcessor, user_transaction_processor::UserTransactionProcessor,
-    ProcessingResult, ProcessorName, ProcessorTrait,
+    account_transactions_processor::AccountTransactionsProcessor, events_processor::EventsProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, ProcessorName, ProcessorTrait
 };
 use crate::{
     models::default_models::{block_metadata_transactions::BlockMetadataTransactionModel, transactions::TransactionModel},
@@ -25,14 +24,17 @@ pub struct MercatoProcessor {
     per_table_chunk_sizes: AHashMap<String, usize>,
     events_processor: EventsProcessor,
     user_transaction_processor: UserTransactionProcessor,
+    account_transaction_processor: AccountTransactionsProcessor,
 }
 
 impl MercatoProcessor {
     pub fn new(connection_pool: PgDbPool, per_table_chunk_sizes: AHashMap<String, usize>) -> Self {
         let events_processor_connection_pool = connection_pool.clone();
         let user_transaction_processor_connection_pool = connection_pool.clone();
+        let account_transaction_processor_pool = connection_pool.clone();
         let events_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
         let user_transaction_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
+        let account_transaction_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
         Self {
             connection_pool,
             per_table_chunk_sizes,
@@ -43,6 +45,10 @@ impl MercatoProcessor {
             user_transaction_processor: UserTransactionProcessor::new(
                 user_transaction_processor_connection_pool,
                 user_transaction_processor_per_table_chunk_sizes,
+            ),
+            account_transaction_processor: AccountTransactionsProcessor::new(
+                account_transaction_processor_pool,
+                account_transaction_processor_per_table_chunk_sizes,
             ),
         }
     }
@@ -220,6 +226,16 @@ impl ProcessorTrait for MercatoProcessor {
             "Processing user transactions",
         );
         self.user_transaction_processor
+            .process_transactions(transactions.clone(), start_version, end_version, None)
+            .await?;
+
+        tracing::trace!(
+            name = self.name(),
+            start_version = start_version,
+            end_version = end_version,
+            "Processing account transactions",
+        );
+        self.account_transaction_processor
             .process_transactions(transactions, start_version, end_version, None)
             .await?;
         tracing::info!(
