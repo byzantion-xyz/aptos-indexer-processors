@@ -6,18 +6,7 @@ use crate::{
     grpc_stream::TransactionsPBResponse,
     models::{ledger_info::LedgerInfo, processor_status::ProcessorStatusQuery},
     processors::{
-        account_transactions_processor::AccountTransactionsProcessor, ans_processor::AnsProcessor,
-        coin_processor::CoinProcessor, default_processor::DefaultProcessor,
-        events_processor::EventsProcessor, fungible_asset_processor::FungibleAssetProcessor,
-        mercato_processor::MercatoProcessor, monitoring_processor::MonitoringProcessor,
-        nft_metadata_processor::NftMetadataProcessor, objects_processor::ObjectsProcessor,
-        stake_processor::StakeProcessor, token_processor::TokenProcessor,
-        token_v2_processor::TokenV2Processor,
-        mercato_token_processor::MercatoTokenProcessor,
-        mercato_token_v2_processor::MercatoTokenV2Processor,
-        transaction_metadata_processor::TransactionMetadataProcessor,
-        user_transaction_processor::UserTransactionProcessor, ProcessingResult, Processor,
-        ProcessorConfig, ProcessorTrait,
+        account_transactions_processor::AccountTransactionsProcessor, ans_processor::AnsProcessor, coin_processor::CoinProcessor, default_processor::DefaultProcessor, events_processor::EventsProcessor, fungible_asset_processor::FungibleAssetProcessor, mercato_account_processor::MercatoAccountProcessor, mercato_processor::MercatoProcessor, mercato_token_processor::MercatoTokenProcessor, mercato_token_v2_processor::MercatoTokenV2Processor, monitoring_processor::MonitoringProcessor, nft_metadata_processor::NftMetadataProcessor, objects_processor::ObjectsProcessor, stake_processor::StakeProcessor, token_processor::TokenProcessor, token_v2_processor::TokenV2Processor, transaction_metadata_processor::TransactionMetadataProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, Processor, ProcessorConfig, ProcessorTrait
     },
     schema::ledger_infos,
     transaction_filter::TransactionFilter,
@@ -760,6 +749,9 @@ pub fn build_processor(
         ),
         ProcessorConfig::UserTransactionProcessor => Processor::from(
             UserTransactionProcessor::new(db_pool, per_table_chunk_sizes),
+        ),
+        ProcessorConfig::MercatoAccountProcessor => Processor::from(
+            MercatoAccountProcessor::new(db_pool, per_table_chunk_sizes),
         ),
     }
 }

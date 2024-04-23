@@ -1,5 +1,5 @@
 use super::{
-    account_transactions_processor::AccountTransactionsProcessor, events_processor::EventsProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, ProcessorName, ProcessorTrait
+    events_processor::EventsProcessor, mercato_account_processor::MercatoAccountProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, ProcessorName, ProcessorTrait
 };
 use crate::{
     models::default_models::{block_metadata_transactions::BlockMetadataTransactionModel, transactions::TransactionModel},
@@ -24,17 +24,17 @@ pub struct MercatoProcessor {
     per_table_chunk_sizes: AHashMap<String, usize>,
     events_processor: EventsProcessor,
     user_transaction_processor: UserTransactionProcessor,
-    account_transaction_processor: AccountTransactionsProcessor,
+    account_processor: MercatoAccountProcessor,
 }
 
 impl MercatoProcessor {
     pub fn new(connection_pool: PgDbPool, per_table_chunk_sizes: AHashMap<String, usize>) -> Self {
         let events_processor_connection_pool = connection_pool.clone();
         let user_transaction_processor_connection_pool = connection_pool.clone();
-        let account_transaction_processor_pool = connection_pool.clone();
+        let account_processor_pool = connection_pool.clone();
         let events_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
         let user_transaction_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
-        let account_transaction_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
+        let account_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
         Self {
             connection_pool,
             per_table_chunk_sizes,
@@ -46,9 +46,9 @@ impl MercatoProcessor {
                 user_transaction_processor_connection_pool,
                 user_transaction_processor_per_table_chunk_sizes,
             ),
-            account_transaction_processor: AccountTransactionsProcessor::new(
-                account_transaction_processor_pool,
-                account_transaction_processor_per_table_chunk_sizes,
+            account_processor: MercatoAccountProcessor::new(
+                account_processor_pool,
+                account_processor_per_table_chunk_sizes,
             ),
         }
     }
@@ -235,7 +235,7 @@ impl ProcessorTrait for MercatoProcessor {
             end_version = end_version,
             "Processing account transactions",
         );
-        self.account_transaction_processor
+        self.account_processor
             .process_transactions(transactions, start_version, end_version, None)
             .await?;
         tracing::info!(

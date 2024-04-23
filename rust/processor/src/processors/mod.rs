@@ -24,6 +24,7 @@ pub mod transaction_metadata_processor;
 pub mod mercato_token_processor;
 pub mod mercato_token_v2_processor;
 pub mod user_transaction_processor;
+pub mod mercato_account_processor;
 
 use self::{
     account_transactions_processor::AccountTransactionsProcessor,
@@ -43,6 +44,7 @@ use self::{
     mercato_token_v2_processor::{MercatoTokenV2Processor, MercatoTokenV2ProcessorConfig},
     transaction_metadata_processor::TransactionMetadataProcessor,
     user_transaction_processor::UserTransactionProcessor,
+    mercato_account_processor::MercatoAccountProcessor,
 };
 use crate::{
     models::processor_status::ProcessorStatus,
@@ -200,6 +202,7 @@ pub enum ProcessorConfig {
     TokenV2Processor(TokenV2ProcessorConfig),
     MercatoTokenProcessor(MercatoTokenProcessorConfig),
     MercatoTokenV2Processor(MercatoTokenV2ProcessorConfig),
+    MercatoAccountProcessor,
     TransactionMetadataProcessor,
     UserTransactionProcessor,
 }
@@ -247,6 +250,7 @@ pub enum Processor {
     MercatoTokenV2Processor,
     TransactionMetadataProcessor,
     UserTransactionProcessor,
+    MercatoAccountProcessor,
 }
 
 #[cfg(test)]
