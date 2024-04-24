@@ -1,6 +1,3 @@
-// Copyright © Aptos Foundation
-// SPDX-License-Identifier: Apache-2.0
-
 use super::{ProcessingResult, ProcessorName, ProcessorTrait};
 use crate::{
     models::account_models::account::Account,
