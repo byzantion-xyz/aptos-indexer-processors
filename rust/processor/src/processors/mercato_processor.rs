@@ -34,7 +34,8 @@ impl MercatoProcessor {
         let account_processor_pool = connection_pool.clone();
         let events_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
         let user_transaction_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
-        let account_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
+        let mut account_processor_per_table_chunk_sizes = per_table_chunk_sizes.clone();
+        account_processor_per_table_chunk_sizes.insert("accounts".to_string(), 100);
         Self {
             connection_pool,
             per_table_chunk_sizes,
