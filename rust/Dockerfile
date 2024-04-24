@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y cmake curl clang git pkg-config libssl-
 ENV CARGO_NET_GIT_FETCH_WITH_CLI true
 RUN cargo build --locked --release -p processor
 RUN cp target/release/processor /usr/local/bin
-RUN cargo build --locked --release -p indexer-metrics
-RUN cp target/release/indexer-metrics /usr/local/bin
+#RUN cargo build --locked --release -p indexer-metrics
+#RUN cp target/release/indexer-metrics /usr/local/bin
 
 # add build info
 ARG GIT_TAG
@@ -28,7 +28,7 @@ ENV GIT_SHA ${GIT_SHA}
 FROM debian:bullseye-slim
 
 COPY --from=builder /usr/local/bin/processor /usr/local/bin
-COPY --from=builder /usr/local/bin/indexer-metrics /usr/local/bin
+#COPY --from=builder /usr/local/bin/indexer-metrics /usr/local/bin
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
