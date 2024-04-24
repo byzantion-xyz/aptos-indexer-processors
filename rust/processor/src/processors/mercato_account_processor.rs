@@ -43,7 +43,7 @@ async fn insert_to_db(
     start_version: u64,
     end_version: u64,
     accounts: &[Account],
-    per_table_chunk_sizes: &AHashMap<String, usize>,
+    _per_table_chunk_sizes: &AHashMap<String, usize>,
 ) -> Result<(), diesel::result::Error> {
     tracing::trace!(
         name = name,
@@ -55,10 +55,7 @@ async fn insert_to_db(
         conn.clone(),
         insert_account_query,
         accounts,
-        get_config_table_chunk_size::<Account>(
-            "accounts",
-            per_table_chunk_sizes,
-        ),
+        100,
     )
     .await?;
     Ok(())
