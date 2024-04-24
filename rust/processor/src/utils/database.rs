@@ -30,7 +30,7 @@ pub type PgPoolConnection<'a> = PooledConnection<'a, MyDbConnection>;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-pub const DEFAULT_MAX_POOL_SIZE: u32 = 150;
+pub const DEFAULT_MAX_POOL_SIZE: u32 = 300;
 
 #[derive(QueryId)]
 /// Using this will append a where clause at the end of the string upsert function, e.g.

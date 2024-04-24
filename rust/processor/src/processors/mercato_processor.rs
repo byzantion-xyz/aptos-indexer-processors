@@ -233,7 +233,7 @@ impl ProcessorTrait for MercatoProcessor {
             name = self.name(),
             start_version = start_version,
             end_version = end_version,
-            "Processing account transactions",
+            "Processing accounts",
         );
         self.account_processor
             .process_transactions(transactions, start_version, end_version, None)
