@@ -25,7 +25,7 @@ jobs:
       - run: |
           git config --global user.email "${{ secrets.GH_EMAIL }}"
           git config --global user.name "${{ secrets.GH_USER }}"
-          apt install libdw-dev -y
+          sudo apt install libdw-dev -y
       - run: bash scripts/auto-update-upstream.sh
         env:
           GH_USER: ${{ secrets.GH_USER }}
