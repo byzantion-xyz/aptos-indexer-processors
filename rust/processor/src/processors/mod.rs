@@ -25,6 +25,7 @@ pub mod mercato_token_processor;
 pub mod mercato_token_v2_processor;
 pub mod user_transaction_processor;
 pub mod mercato_account_processor;
+pub mod mercato_recent_data_processor;
 
 use self::{
     account_transactions_processor::AccountTransactionsProcessor,
@@ -203,6 +204,7 @@ pub enum ProcessorConfig {
     MercatoTokenProcessor(MercatoTokenProcessorConfig),
     MercatoTokenV2Processor(MercatoTokenV2ProcessorConfig),
     MercatoAccountProcessor,
+    MercatoRecentDataProcessor,
     TransactionMetadataProcessor,
     UserTransactionProcessor,
 }

@@ -1,7 +1,8 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    accounts (account_address) {
+    account_transactions (account_address, transaction_version) {
+        transaction_version -> Int8,
         #[max_length = 66]
         account_address -> Varchar,
         inserted_at -> Timestamp,
@@ -9,8 +10,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    account_transactions (account_address, transaction_version) {
-        transaction_version -> Int8,
+    accounts (account_address) {
         #[max_length = 66]
         account_address -> Varchar,
         inserted_at -> Timestamp,
@@ -907,6 +907,90 @@ diesel::table! {
         should_pass -> Bool,
         transaction_timestamp -> Timestamp,
         inserted_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    recent_block_metadata_transactions (version) {
+        version -> Int8,
+        block_height -> Int8,
+        #[max_length = 66]
+        id -> Varchar,
+        round -> Int8,
+        epoch -> Int8,
+        previous_block_votes_bitvec -> Jsonb,
+        #[max_length = 66]
+        proposer -> Varchar,
+        failed_proposer_indices -> Jsonb,
+        timestamp -> Timestamp,
+        inserted_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    recent_events (transaction_version, event_index) {
+        sequence_number -> Int8,
+        creation_number -> Int8,
+        #[max_length = 66]
+        account_address -> Varchar,
+        transaction_version -> Int8,
+        transaction_block_height -> Int8,
+        #[sql_name = "type"]
+        type_ -> Text,
+        data -> Jsonb,
+        inserted_at -> Timestamp,
+        event_index -> Int8,
+        #[max_length = 300]
+        indexed_type -> Varchar,
+    }
+}
+
+diesel::table! {
+    recent_transactions (version) {
+        version -> Int8,
+        block_height -> Int8,
+        #[max_length = 66]
+        hash -> Varchar,
+        #[sql_name = "type"]
+        type_ -> Varchar,
+        payload -> Nullable<Jsonb>,
+        #[max_length = 66]
+        state_change_hash -> Varchar,
+        #[max_length = 66]
+        event_root_hash -> Varchar,
+        #[max_length = 66]
+        state_checkpoint_hash -> Nullable<Varchar>,
+        gas_used -> Numeric,
+        success -> Bool,
+        vm_status -> Text,
+        #[max_length = 66]
+        accumulator_root_hash -> Varchar,
+        num_events -> Int8,
+        num_write_set_changes -> Int8,
+        inserted_at -> Timestamp,
+        epoch -> Int8,
+        #[max_length = 50]
+        payload_type -> Nullable<Varchar>,
+    }
+}
+
+diesel::table! {
+    recent_user_transactions (version) {
+        version -> Int8,
+        block_height -> Int8,
+        #[max_length = 50]
+        parent_signature_type -> Varchar,
+        #[max_length = 66]
+        sender -> Varchar,
+        sequence_number -> Int8,
+        max_gas_amount -> Numeric,
+        expiration_timestamp_secs -> Timestamp,
+        gas_unit_price -> Numeric,
+        timestamp -> Timestamp,
+        #[max_length = 1000]
+        entry_function_id_str -> Varchar,
+        inserted_at -> Timestamp,
+        epoch -> Int8,
     }
 }
 
