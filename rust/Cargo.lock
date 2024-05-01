@@ -614,6 +614,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "delete-old-recent-records"
+version = "1.0.0"
+dependencies = [
+ "native-tls",
+ "postgres-native-tls",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+]
+
+[[package]]
 name = "diesel"
 version = "2.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

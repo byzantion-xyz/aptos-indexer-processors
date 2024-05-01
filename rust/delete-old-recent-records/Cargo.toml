@@ -1,0 +1,20 @@
+[package]
+name = "delete-old-recent-records"
+description = "Clean up outdated recent records"
+version = "1.0.0"
+
+# Workspace inherited keys
+authors = ["Andrey Belchikov <avbel@indexer.xyz>"]
+edition = "2021"
+publish = false
+repository = "https://github.com/byzantion-xyz/aptos-indexer-processors"
+rust-version = { workspace = true }
+
+[dependencies]
+tokio = { workspace = true }
+tracing = { workspace = true }
+# Postgres SSL support
+native-tls = { workspace = true }
+postgres-native-tls = { workspace = true }
+tokio-postgres = { workspace = true }
+
