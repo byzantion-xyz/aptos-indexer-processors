@@ -26,15 +26,15 @@ impl RecentEvent {
         model: &EventModel,
     ) -> Self {
         Self {
-            account_address: model.account_address,
+            account_address: model.account_address.clone(),
             creation_number: model.creation_number,
             sequence_number: model.sequence_number,
             transaction_version: model.transaction_version,
             transaction_block_height: model.transaction_block_height,
-            type_: model.type_,
+            type_: model.type_.clone(),
             data: model.data.clone(),
             event_index: model.event_index,
-            indexed_type: model.indexed_type,
+            indexed_type: model.indexed_type.clone(),
         }
     }
 }

@@ -30,14 +30,14 @@ impl RecentUserTransaction {
         Self {
             version: model.version,
             block_height: model.block_height,
-            parent_signature_type: model.parent_signature_type,
-            sender: model.sender,
+            parent_signature_type: model.parent_signature_type.clone(),
+            sender: model.sender.clone(),
             sequence_number: model.sequence_number,
-            max_gas_amount: model.max_gas_amount,
+            max_gas_amount: model.max_gas_amount.clone(),
             expiration_timestamp_secs: model.expiration_timestamp_secs,
-            gas_unit_price: model.gas_unit_price,
+            gas_unit_price: model.gas_unit_price.clone(),
             timestamp: model.timestamp,
-            entry_function_id_str: model.entry_function_id_str,
+            entry_function_id_str: model.entry_function_id_str.clone(),
             epoch: model.epoch,
         }
     }

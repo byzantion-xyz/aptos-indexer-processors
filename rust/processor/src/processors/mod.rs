@@ -62,6 +62,7 @@ use diesel::{pg::upsert::excluded, ExpressionMethods};
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use crate::processors::mercato_recent_data_processor::MercatoRecentDataProcessor;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct ProcessingResult {
@@ -253,6 +254,7 @@ pub enum Processor {
     TransactionMetadataProcessor,
     UserTransactionProcessor,
     MercatoAccountProcessor,
+    MercatoRecentDataProcessor
 }
 
 #[cfg(test)]

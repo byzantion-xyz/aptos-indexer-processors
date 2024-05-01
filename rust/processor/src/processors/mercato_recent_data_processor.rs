@@ -1,6 +1,17 @@
 use crate::{
-    models::{default_models::{block_metadata_transactions::BlockMetadataTransactionModel, transactions::TransactionModel}, events_models::events::EventModel, recent_models::{recent_block_metadata_transactions::RecentBlockMetadataTransactionModel, recent_events::RecentEventModel, recent_transactions::RecentTransactionModel, recent_user_transactions::RecentUserTransactionModel}, user_transactions_models::user_transactions::UserTransactionModel
-},
+    models::{
+        default_models::{
+            block_metadata_transactions::BlockMetadataTransactionModel,
+            transactions::TransactionModel,
+        },
+        events_models::events::EventModel,
+        recent_models::{
+            recent_block_metadata_transactions::RecentBlockMetadataTransactionModel,
+            recent_events::RecentEventModel, recent_transactions::RecentTransactionModel,
+            recent_user_transactions::RecentUserTransactionModel,
+        },
+        user_transactions_models::user_transactions::UserTransactionModel,
+    },
     schema,
     utils::database::{execute_in_chunks, get_config_table_chunk_size, PgDbPool},
 };
@@ -8,9 +19,11 @@ use ahash::AHashMap;
 use aptos_protos::transaction::v1::{transaction::TxnData, Transaction};
 use async_trait::async_trait;
 use diesel::{
-    pg::{upsert::excluded, Pg}, query_builder::QueryFragment, ExpressionMethods
+    pg::{upsert::excluded, Pg},
+    query_builder::QueryFragment,
+    ExpressionMethods,
 };
-use std::{error::Error, fmt::Debug};
+use std::fmt::Debug;
 use tokio::join;
 
 use super::{ProcessingResult, ProcessorName, ProcessorTrait};
@@ -73,12 +86,9 @@ async fn insert_transactions_to_db(
         ),
     );
 
-    let (txns_res, bmt_res) =
-        join!(txns_res, bmt_res);
+    let (txns_res, bmt_res) = join!(txns_res, bmt_res);
 
-    for res in [
-        txns_res, bmt_res,
-    ] {
+    for res in [txns_res, bmt_res] {
         res?;
     }
 
@@ -92,7 +102,10 @@ fn insert_transactions_query(
     Option<&'static str>,
 ) {
     use schema::recent_transactions::dsl::*;
-    let items: Vec<RecentTransactionModel> = items_to_insert.iter().map(|i| RecentTransactionModel::from_transaction_model(i)).collect();
+    let items: Vec<RecentTransactionModel> = items_to_insert
+        .iter()
+        .map(|i| RecentTransactionModel::from_transaction_model(i))
+        .collect();
 
     (
         diesel::insert_into(schema::recent_transactions::table)
@@ -114,7 +127,10 @@ fn insert_block_metadata_transactions_query(
     Option<&'static str>,
 ) {
     use schema::recent_block_metadata_transactions::dsl::*;
-    let items: Vec<RecentBlockMetadataTransactionModel> = items_to_insert.iter().map(|i| RecentBlockMetadataTransactionModel::from_block_metadata_transaction_model(i)).collect();
+    let items: Vec<RecentBlockMetadataTransactionModel> = items_to_insert
+        .iter()
+        .map(|i| RecentBlockMetadataTransactionModel::from_block_metadata_transaction_model(i))
+        .collect();
 
     (
         diesel::insert_into(schema::recent_block_metadata_transactions::table)
@@ -158,7 +174,12 @@ fn insert_events_query(
     use schema::recent_events::dsl::*;
     (
         diesel::insert_into(schema::recent_events::table)
-            .values(items_to_insert.iter().map(|i| RecentEventModel::from_event_model(i)).collect::<Vec<RecentEventModel>>())
+            .values(
+                items_to_insert
+                    .iter()
+                    .map(|i| RecentEventModel::from_event_model(i))
+                    .collect::<Vec<RecentEventModel>>(),
+            )
             .on_conflict((transaction_version, event_index))
             .do_update()
             .set((
@@ -192,7 +213,8 @@ async fn insert_user_transactions_to_db(
             "user_transactions",
             per_table_chunk_sizes,
         ),
-    ).await
+    )
+    .await
 }
 
 fn insert_user_transactions_query(
@@ -204,7 +226,12 @@ fn insert_user_transactions_query(
     use schema::recent_user_transactions::dsl::*;
     (
         diesel::insert_into(schema::recent_user_transactions::table)
-            .values(items_to_insert.iter().map(|i| RecentUserTransactionModel::from_user_transaction_model(i)).collect::<Vec<RecentUserTransactionModel>>())
+            .values(
+                items_to_insert
+                    .iter()
+                    .map(|i| RecentUserTransactionModel::from_user_transaction_model(i))
+                    .collect::<Vec<RecentUserTransactionModel>>(),
+            )
             .on_conflict(version)
             .do_update()
             .set((
@@ -214,7 +241,6 @@ fn insert_user_transactions_query(
         None,
     )
 }
-
 
 #[async_trait]
 impl ProcessorTrait for MercatoRecentDataProcessor {
@@ -229,10 +255,15 @@ impl ProcessorTrait for MercatoRecentDataProcessor {
         end_version: u64,
         _: Option<u64>,
     ) -> anyhow::Result<ProcessingResult> {
-        
-        let transaction_result = self.process_transaction_data(transactions, start_version, end_version).await;
-        let user_transaction_result = self.process_user_transaction_data(transactions, start_version, end_version).await;
-        let event_result = self.process_event_data(transactions, start_version, end_version).await;
+        let transaction_result = self
+            .process_transaction_data(transactions.clone(), start_version, end_version)
+            .await;
+        let user_transaction_result = self
+            .process_user_transaction_data(transactions.clone(), start_version, end_version)
+            .await;
+        let event_result = self
+            .process_event_data(transactions.clone(), start_version, end_version)
+            .await;
 
         tracing::info!(
             name = self.name(),
@@ -246,8 +277,14 @@ impl ProcessorTrait for MercatoRecentDataProcessor {
         }
 
         let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
-        
-        Ok(ProcessingResult {start_version,end_version,db_insertion_duration_in_secs:0.0,last_transaction_timestamp, processing_duration_in_secs: 0})
+
+        Ok(ProcessingResult {
+            start_version,
+            end_version,
+            db_insertion_duration_in_secs: 0.0,
+            last_transaction_timestamp,
+            processing_duration_in_secs: 0.0,
+        })
     }
 
     fn connection_pool(&self) -> &PgDbPool {
@@ -260,24 +297,20 @@ impl MercatoRecentDataProcessor {
         transactions: Vec<Transaction>,
         start_version: u64,
         end_version: u64,
-    ) -> anyhow::Result<(), dyn Error>{
+    ) -> anyhow::Result<(), diesel::result::Error> {
         tracing::info!(
             name = self.name(),
             start_version = start_version,
             end_version = end_version,
             "Processing transaction data",
         );
-        let processing_start = std::time::Instant::now();
-    
         let (txns, block_metadata_txns, _, _) = TransactionModel::from_transactions(&transactions);
-        let processing_duration_in_secs = processing_start.elapsed().as_secs_f64();
-        let db_insertion_start = std::time::Instant::now();
-    
+
         let mut block_metadata_transactions = vec![];
         for block_metadata_txn in block_metadata_txns {
             block_metadata_transactions.push(block_metadata_txn.clone());
         }
-    
+
         insert_transactions_to_db(
             self.get_pool(),
             self.name(),
@@ -289,13 +322,13 @@ impl MercatoRecentDataProcessor {
         )
         .await
     }
-    
+
     async fn process_event_data(
         &self,
         transactions: Vec<Transaction>,
         start_version: u64,
         end_version: u64,
-    ) -> anyhow::Result<(), dyn Error> {
+    ) -> anyhow::Result<(), diesel::result::Error> {
         let mut events = vec![];
         for txn in &transactions {
             let txn_version = txn.version as i64;
@@ -317,11 +350,11 @@ impl MercatoRecentDataProcessor {
                 TxnData::User(tx_inner) => &tx_inner.events,
                 _ => &default,
             };
-    
+
             let txn_events = EventModel::from_events(raw_events, txn_version, block_height);
             events.extend(txn_events);
         }
-    
+
         insert_events_to_db(
             self.get_pool(),
             self.name(),
@@ -338,7 +371,7 @@ impl MercatoRecentDataProcessor {
         transactions: Vec<Transaction>,
         start_version: u64,
         end_version: u64,
-    ) -> anyhow::Result<(), dyn Error> {
+    ) -> anyhow::Result<(), diesel::result::Error> {
         let mut user_transactions = vec![];
         for txn in &transactions {
             let txn_version = txn.version as i64;
