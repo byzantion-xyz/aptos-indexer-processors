@@ -2,11 +2,10 @@ use super::{ProcessingResult, ProcessorName, ProcessorTrait};
 use crate::{
     models::token_models::{
         collection_datas::CurrentCollectionData,
-        token_claims::CurrentTokenPendingClaim,
         token_datas::CurrentTokenData,
         token_ownerships::CurrentTokenOwnership,
         tokens::{
-            CurrentTokenOwnershipPK, CurrentTokenPendingClaimPK, TableMetadataForToken, Token,
+            CurrentTokenOwnershipPK, TableMetadataForToken, Token,
             TokenDataIdHash,
         },
     },
@@ -78,7 +77,6 @@ async fn insert_to_db(
         &[CurrentTokenData],
         &[CurrentCollectionData],
     ),
-    current_token_claims: &[CurrentTokenPendingClaim],
     per_table_chunk_sizes: &AHashMap<String, usize>,
 ) -> Result<(), diesel::result::Error> {
     tracing::trace!(
@@ -116,21 +114,11 @@ async fn insert_to_db(
         ),
     );
 
-    let ctc = execute_in_chunks(
-        conn.clone(),
-        insert_current_token_claims_query,
-        current_token_claims,
-        get_config_table_chunk_size::<CurrentTokenPendingClaim>(
-            "current_token_pending_claims",
-            per_table_chunk_sizes,
-        ),
-    );
-    
-    let (cto_res, ctd_res, ccd_res, ctc_res) =
-        tokio::join!(cto, ctd, ccd, ctc);
+    let (cto_res, ctd_res, ccd_res) =
+        tokio::join!(cto, ctd, ccd);
 
     for res in [
-        cto_res, ctd_res, ccd_res, ctc_res,
+        cto_res, ctd_res, ccd_res,
     ] {
         res?;
     }
@@ -232,38 +220,6 @@ fn insert_current_collection_datas_query(
 }
 
 
-fn insert_current_token_claims_query(
-    items_to_insert: Vec<CurrentTokenPendingClaim>,
-) -> (
-    impl QueryFragment<Pg> + diesel::query_builder::QueryId + Send,
-    Option<&'static str>,
-) {
-    use schema::current_token_pending_claims::dsl::*;
-
-    (
-        diesel::insert_into(schema::current_token_pending_claims::table)
-            .values(items_to_insert)
-            .on_conflict((
-                token_data_id_hash, property_version, from_address, to_address
-            ))
-            .do_update()
-            .set((
-                collection_data_id_hash.eq(excluded(collection_data_id_hash)),
-                creator_address.eq(excluded(creator_address)),
-                collection_name.eq(excluded(collection_name)),
-                name.eq(excluded(name)),
-                amount.eq(excluded(amount)),
-                table_handle.eq(excluded(table_handle)),
-                last_transaction_version.eq(excluded(last_transaction_version)),
-                inserted_at.eq(excluded(inserted_at)),
-                token_data_id.eq(excluded(token_data_id)),
-                collection_id.eq(excluded(collection_id)),
-            )),
-        Some(" WHERE current_token_pending_claims.last_transaction_version <= excluded.last_transaction_version "),
-    )
-}
-
-
 #[async_trait]
 impl ProcessorTrait for MercatoTokenProcessor {
     fn name(&self) -> &'static str {
@@ -305,10 +261,6 @@ impl ProcessorTrait for MercatoTokenProcessor {
             AHashMap::new();
         let mut all_current_collection_datas: AHashMap<TokenDataIdHash, CurrentCollectionData> =
             AHashMap::new();
-        let mut all_current_token_claims: AHashMap<
-            CurrentTokenPendingClaimPK,
-            CurrentTokenPendingClaim,
-        > = AHashMap::new();
 
         for txn in &transactions {
             let (
@@ -319,7 +271,7 @@ impl ProcessorTrait for MercatoTokenProcessor {
                 current_token_ownerships,
                 current_token_datas,
                 current_collection_datas,
-                current_token_claims,
+                _e,
             ) = Token::from_transaction(
                 txn,
                 &table_handle_to_owner,
@@ -331,9 +283,6 @@ impl ProcessorTrait for MercatoTokenProcessor {
             all_current_token_ownerships.extend(current_token_ownerships);
             all_current_token_datas.extend(current_token_datas);
             all_current_collection_datas.extend(current_collection_datas);
-
-            // claims
-            all_current_token_claims.extend(current_token_claims);
         }
 
         // Getting list of values and sorting by pk in order to avoid postgres deadlock since we're doing multi threaded db writes
@@ -346,9 +295,6 @@ impl ProcessorTrait for MercatoTokenProcessor {
         let mut all_current_collection_datas = all_current_collection_datas
             .into_values()
             .collect::<Vec<CurrentCollectionData>>();
-        let mut all_current_token_claims = all_current_token_claims
-            .into_values()
-            .collect::<Vec<CurrentTokenPendingClaim>>();
 
         // Sort by PK
         all_current_token_ownerships.sort_by(|a, b| {
@@ -361,20 +307,7 @@ impl ProcessorTrait for MercatoTokenProcessor {
         all_current_token_datas.sort_by(|a, b| a.token_data_id_hash.cmp(&b.token_data_id_hash));
         all_current_collection_datas
             .sort_by(|a, b| a.collection_data_id_hash.cmp(&b.collection_data_id_hash));
-        all_current_token_claims.sort_by(|a, b| {
-            (
-                &a.token_data_id_hash,
-                &a.property_version,
-                &a.from_address,
-                &a.to_address,
-            )
-                .cmp(&(
-                    &b.token_data_id_hash,
-                    &b.property_version,
-                    &b.from_address,
-                    &a.to_address,
-                ))
-        });
+
 
         let processing_duration_in_secs = processing_start.elapsed().as_secs_f64();
         let db_insertion_start = std::time::Instant::now();
@@ -389,7 +322,6 @@ impl ProcessorTrait for MercatoTokenProcessor {
                 &all_current_token_datas,
                 &all_current_collection_datas,
             ),
-            &all_current_token_claims,
             &self.per_table_chunk_sizes,
         )
         .await;
