@@ -18,7 +18,10 @@ use diesel::{
 use std::fmt::Debug;
 use tracing::error;
 use tokio::join;
+use crate::models::default_models::move_resources::MoveResource;
+use crate::models::default_models::write_set_changes::WriteSetChangeDetail;
 
+static INDEXED_RESOURCE_TYPES: &'static [&str] = &["0x4::royalty::Royalty"];
 pub struct MercatoProcessor {
     connection_pool: PgDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
@@ -71,6 +74,7 @@ async fn insert_to_db(
     start_version: u64,
     end_version: u64,
     txns: &[TransactionModel],
+    move_resources: &[MoveResource],
     block_metadata_transactions: &[BlockMetadataTransactionModel],
     per_table_chunk_sizes: &AHashMap<String, usize>,
 ) -> Result<(), diesel::result::Error> {
@@ -98,11 +102,18 @@ async fn insert_to_db(
         ),
     );
 
-    let (txns_res, bmt_res) =
-        join!(txns_res, bmt_res);
+    let mr_res = execute_in_chunks(
+        conn.clone(),
+        insert_move_resources_query,
+        move_resources,
+        get_config_table_chunk_size::<MoveResource>("move_resources", per_table_chunk_sizes),
+    );
+
+    let (txns_res, bmt_res, mr_res) =
+        join!(txns_res, bmt_res, mr_res);
 
     for res in [
-        txns_res, bmt_res,
+        txns_res, bmt_res, mr_res
     ] {
         res?;
     }
@@ -127,6 +138,23 @@ fn insert_transactions_query(
                 inserted_at.eq(excluded(inserted_at)),
                 payload_type.eq(excluded(payload_type)),
             )),
+        None,
+    )
+}
+
+fn insert_move_resources_query(
+    items_to_insert: Vec<MoveResource>,
+) -> (
+    impl QueryFragment<Pg> + diesel::query_builder::QueryId + Send,
+    Option<&'static str>,
+) {
+    use schema::move_resources::dsl::*;
+
+    (
+        diesel::insert_into(schema::move_resources::table)
+            .values(items_to_insert)
+            .on_conflict((transaction_version, write_set_change_index))
+            .do_nothing(),
         None,
     )
 }
@@ -169,7 +197,7 @@ impl ProcessorTrait for MercatoProcessor {
         );
         let processing_start = std::time::Instant::now();
         let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
-        let (txns, block_metadata_txns, _, _) = TransactionModel::from_transactions(&transactions);
+        let (txns, block_metadata_txns, _, wsc_details) = TransactionModel::from_transactions(&transactions);
         let processing_duration_in_secs = processing_start.elapsed().as_secs_f64();
         let db_insertion_start = std::time::Instant::now();
 
@@ -178,12 +206,25 @@ impl ProcessorTrait for MercatoProcessor {
             block_metadata_transactions.push(block_metadata_txn.clone());
         }
 
+        let mut move_resources = vec![];
+        for detail in wsc_details {
+            match detail {
+                WriteSetChangeDetail::Resource(resource) => {
+                    if INDEXED_RESOURCE_TYPES.contains(&resource.type_.as_str()) {
+                        move_resources.push(resource.clone());
+                    }
+                },
+                _ => ()
+            }
+        }
+
         let tx_result = insert_to_db(
             self.get_pool(),
             self.name(),
             start_version,
             end_version,
             &txns,
+            &move_resources,
             &block_metadata_transactions,
             &self.per_table_chunk_sizes,
         )
