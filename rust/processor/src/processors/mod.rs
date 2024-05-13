@@ -23,8 +23,10 @@ pub mod token_v2_processor;
 pub mod transaction_metadata_processor;
 pub mod mercato_token_processor;
 pub mod mercato_token_v2_processor;
+pub mod mercato_indexer_processor;
 pub mod user_transaction_processor;
 pub mod mercato_account_processor;
+mod mercato_Indexer_processor;
 
 use self::{
     account_transactions_processor::AccountTransactionsProcessor,
@@ -42,6 +44,7 @@ use self::{
     token_v2_processor::{TokenV2Processor, TokenV2ProcessorConfig},
     mercato_token_processor::{MercatoTokenProcessor, MercatoTokenProcessorConfig},
     mercato_token_v2_processor::{MercatoTokenV2Processor, MercatoTokenV2ProcessorConfig},
+    mercato_indexer_processor::{MercatoIndexerProcessor, MercatoIndexerProcessorConfig},
     transaction_metadata_processor::TransactionMetadataProcessor,
     user_transaction_processor::UserTransactionProcessor,
     mercato_account_processor::MercatoAccountProcessor,
@@ -202,6 +205,7 @@ pub enum ProcessorConfig {
     TokenV2Processor(TokenV2ProcessorConfig),
     MercatoTokenProcessor(MercatoTokenProcessorConfig),
     MercatoTokenV2Processor(MercatoTokenV2ProcessorConfig),
+    MercatoIndexerProcessor(MercatoIndexerProcessorConfig),
     MercatoAccountProcessor,
     TransactionMetadataProcessor,
     UserTransactionProcessor,
@@ -251,6 +255,7 @@ pub enum Processor {
     TransactionMetadataProcessor,
     UserTransactionProcessor,
     MercatoAccountProcessor,
+    MercatoIndexerProcessor,
 }
 
 #[cfg(test)]

@@ -6,7 +6,7 @@ use crate::{
     grpc_stream::TransactionsPBResponse,
     models::{ledger_info::LedgerInfo, processor_status::ProcessorStatusQuery},
     processors::{
-        account_transactions_processor::AccountTransactionsProcessor, ans_processor::AnsProcessor, coin_processor::CoinProcessor, default_processor::DefaultProcessor, events_processor::EventsProcessor, fungible_asset_processor::FungibleAssetProcessor, mercato_account_processor::MercatoAccountProcessor, mercato_processor::MercatoProcessor, mercato_token_processor::MercatoTokenProcessor, mercato_token_v2_processor::MercatoTokenV2Processor, monitoring_processor::MonitoringProcessor, nft_metadata_processor::NftMetadataProcessor, objects_processor::ObjectsProcessor, stake_processor::StakeProcessor, token_processor::TokenProcessor, token_v2_processor::TokenV2Processor, transaction_metadata_processor::TransactionMetadataProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, Processor, ProcessorConfig, ProcessorTrait
+        account_transactions_processor::AccountTransactionsProcessor, ans_processor::AnsProcessor, coin_processor::CoinProcessor, default_processor::DefaultProcessor, events_processor::EventsProcessor, fungible_asset_processor::FungibleAssetProcessor, mercato_account_processor::MercatoAccountProcessor, mercato_processor::MercatoProcessor, mercato_token_processor::MercatoTokenProcessor, mercato_token_v2_processor::MercatoTokenV2Processor, mercato_indexer_processor::MercatoIndexerProcessor,monitoring_processor::MonitoringProcessor, nft_metadata_processor::NftMetadataProcessor, objects_processor::ObjectsProcessor, stake_processor::StakeProcessor, token_processor::TokenProcessor, token_v2_processor::TokenV2Processor, transaction_metadata_processor::TransactionMetadataProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, Processor, ProcessorConfig, ProcessorTrait
     },
     schema::ledger_infos,
     transaction_filter::TransactionFilter,
@@ -740,6 +740,11 @@ pub fn build_processor(
             per_table_chunk_sizes,
         )),
         ProcessorConfig::MercatoTokenV2Processor(config) => Processor::from(MercatoTokenV2Processor::new(
+            db_pool,
+            config.clone(),
+            per_table_chunk_sizes,
+        )),
+        ProcessorConfig::MercatoIndexerProcessor(config) => Processor::from(MercatoIndexerProcessor::new(
             db_pool,
             config.clone(),
             per_table_chunk_sizes,
