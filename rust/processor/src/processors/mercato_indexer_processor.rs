@@ -53,10 +53,6 @@ pub struct MercatoIndexerProcessorConfig {
     pub query_retries: u32,
     #[serde(default = "IndexerGrpcProcessorConfig::default_query_retry_delay_ms")]
     pub query_retry_delay_ms: u64,
-    #[serde()]
-    pub contract_id: String,
-    #[serde()]
-    pub indexer_database_url: String,
 }
 
 const COLLECTION_ID: &str = "330f0d93-86ed-4a55-a18c-a4c7e4d5eaf2";
