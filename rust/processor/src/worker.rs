@@ -6,7 +6,7 @@ use crate::{
     grpc_stream::TransactionsPBResponse,
     models::{ledger_info::LedgerInfo, processor_status::ProcessorStatusQuery},
     processors::{
-        account_transactions_processor::AccountTransactionsProcessor, ans_processor::AnsProcessor, coin_processor::CoinProcessor, default_processor::DefaultProcessor, events_processor::EventsProcessor, fungible_asset_processor::FungibleAssetProcessor, mercato_account_processor::MercatoAccountProcessor, mercato_processor::MercatoProcessor, mercato_token_processor::MercatoTokenProcessor, mercato_token_v2_processor::MercatoTokenV2Processor, mercato_indexer_processor::MercatoIndexerProcessor,monitoring_processor::MonitoringProcessor, nft_metadata_processor::NftMetadataProcessor, objects_processor::ObjectsProcessor, stake_processor::StakeProcessor, token_processor::TokenProcessor, token_v2_processor::TokenV2Processor, transaction_metadata_processor::TransactionMetadataProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, Processor, ProcessorConfig, ProcessorTrait
+        account_transactions_processor::AccountTransactionsProcessor, ans_processor::AnsProcessor, coin_processor::CoinProcessor, default_processor::DefaultProcessor, events_processor::EventsProcessor, fungible_asset_processor::FungibleAssetProcessor, mercato_account_processor::MercatoAccountProcessor, mercato_processor::MercatoProcessor, mercato_token_processor::MercatoTokenProcessor, mercato_token_v2_processor::MercatoTokenV2Processor, mercato_indexer_processor::MercatoIndexerProcessor, monitoring_processor::MonitoringProcessor, nft_metadata_processor::NftMetadataProcessor, objects_processor::ObjectsProcessor, stake_processor::StakeProcessor, token_processor::TokenProcessor, token_v2_processor::TokenV2Processor, transaction_metadata_processor::TransactionMetadataProcessor, user_transaction_processor::UserTransactionProcessor, ProcessingResult, Processor, ProcessorConfig, ProcessorTrait
     },
     schema::ledger_infos,
     transaction_filter::TransactionFilter,
@@ -119,19 +119,19 @@ impl Worker {
     /// 4. We will keep track of the last processed version and monitoring things like TPS
     pub async fn run(&mut self) {
         let processor_name = self.processor_config.name();
-        info!(
-            processor_name = processor_name,
-            service_type = PROCESSOR_SERVICE_TYPE,
-            "[Parser] Running migrations"
-        );
-        let migration_time = std::time::Instant::now();
-        self.run_migrations().await;
-        info!(
-            processor_name = processor_name,
-            service_type = PROCESSOR_SERVICE_TYPE,
-            duration_in_secs = migration_time.elapsed().as_secs_f64(),
-            "[Parser] Finished migrations"
-        );
+        // info!(
+        //     processor_name = processor_name,
+        //     service_type = PROCESSOR_SERVICE_TYPE,
+        //     "[Parser] Running migrations"
+        // );
+        // let migration_time = std::time::Instant::now();
+        // self.run_migrations().await;
+        // info!(
+        //     processor_name = processor_name,
+        //     service_type = PROCESSOR_SERVICE_TYPE,
+        //     duration_in_secs = migration_time.elapsed().as_secs_f64(),
+        //     "[Parser] Finished migrations"
+        // );
 
         let starting_version_from_db = self
             .get_start_version()

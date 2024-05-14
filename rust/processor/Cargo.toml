@@ -59,6 +59,8 @@ url = { workspace = true }
 native-tls = { workspace = true }
 postgres-native-tls = { workspace = true }
 tokio-postgres = { workspace = true }
+uuid = { version = "1.8.0", features = ["v4"] }
+log = "0.4.19"
 
 [target.'cfg(unix)'.dependencies]
 jemallocator = { workspace = true }

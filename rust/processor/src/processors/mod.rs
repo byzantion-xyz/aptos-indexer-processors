@@ -26,7 +26,6 @@ pub mod mercato_token_v2_processor;
 pub mod mercato_indexer_processor;
 pub mod user_transaction_processor;
 pub mod mercato_account_processor;
-mod mercato_Indexer_processor;
 
 use self::{
     account_transactions_processor::AccountTransactionsProcessor,
