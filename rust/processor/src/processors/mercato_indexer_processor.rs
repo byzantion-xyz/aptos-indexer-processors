@@ -1,26 +1,26 @@
 use super::{ProcessingResult, ProcessorName, ProcessorTrait};
+use crate::models::token_v2_models::v2_token_utils::{Mint, MintEvent, PropertyMapModel, TokenV2, TransferEvent, V2TokenEvent};
 use crate::utils::database::{execute_in_chunks, PgDbPool};
-use crate::{models::{
-    default_models::move_resources::MoveResource,
-}, utils::{
-    util::{get_entry_function_from_user_request, standardize_address},
-}, IndexerGrpcProcessorConfig};
+use crate::{
+    models::default_models::move_resources::MoveResource,
+    utils::util::{get_entry_function_from_user_request, standardize_address},
+    IndexerGrpcProcessorConfig,
+};
 use ahash::AHashMap;
 use anyhow::bail;
 use aptos_protos::transaction::v1::{transaction::TxnData, write_set_change::Change, Transaction};
 use aptos_protos::util::timestamp::Timestamp;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use core::option::Option;
+use diesel::pg::Pg;
+use diesel::prelude::*;
+use diesel::query_builder::QueryFragment;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt::Debug;
-use core::option::Option;
-use diesel::pg::Pg;
 use tracing::error;
-use crate::models::token_v2_models::v2_token_utils::{MintEvent, PropertyMapModel, TokenV2, TransferEvent};
-use diesel::prelude::*;
-use diesel::query_builder::QueryFragment;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -56,9 +56,9 @@ pub struct MercatoIndexerProcessorConfig {
 }
 
 const COLLECTION_ID: &str = "330f0d93-86ed-4a55-a18c-a4c7e4d5eaf2";
-const SMART_CONTRACT_ID: &str = "bd280fe5-f59f-405e-82d7-71e3ff2065cb";
+const COLLECTION_CHAIN_ID: &str = "0x9a6f1b16323c428756b439553ab2a6a4cbdd46ade55d0da17f3a7c7d3e4c6ac8";
+const SMART_CONTRACT_ID: &str = "bd280fe5-f59f-405e-82d7-71e3ff2065cb"; /*"c568a492-de7e-44f2-9a6f-bcce6e7775fc" */ //"";
 const CHAIN_ID: &str = "f395c6c8-2d11-419f-856c-d28a8f1c0bca";
-const MARKETPLACE_SMART_CONTRACT_ID: &str = "bd280fe5-f59f-405e-82d7-71e3ff2065cb";
 
 pub struct MercatoIndexerProcessor {
     connection_pool: PgDbPool,
@@ -107,26 +107,18 @@ async fn insert_to_db(
     nfts: &[IndexerNftMeta],
     _per_table_chunk_sizes: &AHashMap<String, usize>,
 ) -> Result<(), diesel::result::Error> {
-    tracing::trace!(
-        name = name,
-        start_version = start_version,
-        end_version = end_version,
-        "Inserting into indexer DB",
-    );
+    if !nfts.is_empty() {
+        tracing::trace!(
+            name = name,
+            start_version = start_version,
+            end_version = end_version,
+            "Inserting into indexer DB",
+        );
 
-    execute_in_chunks(
-        conn_pool.clone(),
-        insert_nft_meta_query,
-        nfts,
-        200,
-    ).await?;
+        let _ = execute_in_chunks(conn_pool.clone(), insert_nft_meta_query, nfts, 200).await;
 
-    execute_in_chunks(
-        conn_pool.clone(),
-        insert_actions_query,
-        nfts,
-        500,
-    ).await?;
+        let _ = execute_in_chunks(conn_pool.clone(), insert_actions_query, nfts, 500).await;
+    }
 
     Ok(())
 }
@@ -137,23 +129,40 @@ fn insert_nft_meta_query(
     impl QueryFragment<Pg> + diesel::query_builder::QueryId + Send,
     Option<&'static str>,
 ) {
-        let values_sql = items_to_insert.iter().filter_map(|n| format!("({})", vec![
-        wrap_quotes(&n.id), wrap_quotes(&n.name), wrap_quotes(&n.image), wrap_quotes(&n.token_id), wrap_quotes(COLLECTION_ID),
-        wrap_quotes(CHAIN_ID), wrap_quotes(SMART_CONTRACT_ID), wrap_properties(&n.properties),
-        wrap_quotes(&n.mint_tx), wrap_quotes(&n.owner), n.owner_block_height.to_string(), wrap_quotes(&n.owner_tx_id)].join(",")).into()).join("\n");
-        let query = format!(r#"
+    let values_sql = items_to_insert
+        .iter()
+        .filter_map(|n| {
+            format!(
+                "({})",
+                vec![
+                    wrap_quotes(&n.id),
+                    wrap_quotes(&n.name),
+                    wrap_quotes(&n.token_id),
+                    wrap_quotes(COLLECTION_ID),
+                    wrap_quotes(CHAIN_ID),
+                    wrap_quotes(SMART_CONTRACT_ID),
+                    wrap_properties(&n.properties),
+                    wrap_quotes(&n.mint_tx),
+                    wrap_quotes(&n.owner),
+                    n.owner_block_height.to_string(),
+                    wrap_quotes(&n.owner_tx_id)
+                ]
+                .join(",")
+            )
+            .into()
+        })
+        .join(",\n");
+    let query = format!(
+        r#"
         INSERT INTO nft_meta (
-            id, name, image, token_id, collection_id, chain_id, smart_contract_id, properties, mint_tx,  owner, owner_block_height, owner_tx_id
+            id, name, token_id, collection_id, chain_id, smart_contract_id, properties, mint_tx,  owner, owner_block_height, owner_tx_id
         ) VALUES
             {}
-        ON CONFLICT (token_id) DO NOTHING;"#, values_sql);
+        ON CONFLICT (collection_id, token_id) DO NOTHING;"#,
+        values_sql
+    );
 
-        tracing::debug!(query);
-
-    (
-        diesel::sql_query(query),
-        None,
-    )
+    (diesel::sql_query(query), None)
 }
 
 fn insert_actions_query(
@@ -173,15 +182,14 @@ fn insert_actions_query(
         "nonce",
         "collection_id",
         "nft_meta_id",
-        "smart_contract_id",
-        "marketplace_smart_contract_id",
+        "smart_contract_id"
     ];
     let mut action_values: Vec<String> = Vec::new();
     for nft in nfts {
         action_values.push(
             [
                 wrap_quotes(&nft.owner_tx_id),
-                nft.owner_tx_index.to_string(),
+                (nft.owner_tx_index * 10).to_string(),
                 wrap_quotes("mint"),
                 "NULL".to_string(),
                 wrap_quotes(&nft.owner),
@@ -191,21 +199,20 @@ fn insert_actions_query(
                         nft.owner_tx_time.seconds,
                         nft.owner_tx_time.nanos as u32,
                     )
-                        .unwrap()
-                        .to_string(),
+                    .unwrap()
+                    .to_string(),
                 ),
                 nft.owner_tx_version.to_string(),
                 wrap_quotes(COLLECTION_ID),
                 wrap_quotes(&nft.id),
-                wrap_quotes(SMART_CONTRACT_ID),
-                wrap_quotes(MARKETPLACE_SMART_CONTRACT_ID),
+                wrap_quotes(SMART_CONTRACT_ID)
             ]
-                .join(", "),
+            .join(", "),
         );
         action_values.push(
             [
                 wrap_quotes(&nft.owner_tx_id),
-                nft.owner_tx_index.to_string(),
+                (nft.owner_tx_index * 10 + 1).to_string(),
                 wrap_quotes("transfer"),
                 wrap_quotes(&nft.sender),
                 wrap_quotes(&nft.owner),
@@ -215,20 +222,19 @@ fn insert_actions_query(
                         nft.owner_tx_time.seconds,
                         nft.owner_tx_time.nanos as u32,
                     )
-                        .unwrap()
-                        .to_string(),
+                    .unwrap()
+                    .to_string(),
                 ),
                 nft.owner_tx_version.to_string(),
                 wrap_quotes(COLLECTION_ID),
                 wrap_quotes(&nft.id),
                 wrap_quotes(SMART_CONTRACT_ID),
-                "NULL".to_string(),
             ]
-                .join(", "),
+            .join(", "),
         );
     }
     let sql_field_names = fields.iter().map(|v| format!("\"{}\"", v)).join(", ");
-    let sql_values = action_values.iter().map(|v| format!("({})", v)).join("\n");
+    let sql_values = action_values.iter().map(|v| format!("({})", v)).join(",\n");
 
     let query = format!(
         r#"
@@ -245,14 +251,9 @@ fn insert_actions_query(
         sql_values = sql_values
     );
 
-    tracing::debug!(query);
 
-    (
-        diesel::sql_query(query),
-        None,
-    )
+    (diesel::sql_query(query), None)
 }
-
 
 #[async_trait]
 impl ProcessorTrait for MercatoIndexerProcessor {
@@ -290,6 +291,7 @@ impl ProcessorTrait for MercatoIndexerProcessor {
             let txn_version = txn.version as i64;
             let transaction_info = txn.info.as_ref().expect("Transaction info doesn't exist!");
             let mut token_id = "".to_string();
+            let mut collection_id = "".to_string();
             let mut sender = "".to_string();
             let mut owner = "".to_string();
             let mut token_property_map: Option<PropertyMapModel> = None;
@@ -301,55 +303,44 @@ impl ProcessorTrait for MercatoIndexerProcessor {
                     .request
                     .as_ref()
                     .expect("Getting user request failed.");
-                let entry_function = get_entry_function_from_user_request(user_request).unwrap();
                 txn_index = Some(user_request.sequence_number);
 
-                if !entry_function.starts_with(&format!("{}::", &self.config.contract_id)) {
-                    tracing::debug!("Ignoring unsupported {}", &entry_function);
-                    continue;
-                };
 
                 for (_index, event) in user_txn.events.iter().enumerate() {
-                    if let Some(mint_event) = MintEvent::from_event(event, txn_version).unwrap() {
-                        token_id = mint_event.get_token_address();
-                    };
+                    if let Some(V2TokenEvent::Mint(mint_event)) =
+                        V2TokenEvent::from_event(event.type_str.as_str(), &event.data, txn_version).unwrap()
+                    {
+                        token_id= mint_event.get_token_address();
+                        collection_id = mint_event.collection;
+                        continue;
+                    }
                     if let Some(transfer_event) =
                         TransferEvent::from_event(event, txn_version).unwrap()
                     {
-                        if transfer_event.get_object_address() == token_id {
-                            sender = transfer_event.get_from_address();
-                            owner = transfer_event.get_to_address();
-                        };
+                        sender = transfer_event.get_from_address();
+                        owner = transfer_event.get_to_address();
+                        continue;
                     };
                 }
             }
 
-            if !token_id.is_empty() && !sender.is_empty() && !owner.is_empty() {
-                tracing::warn!("No token data found");
+            if token_id.is_empty() || collection_id.is_empty() || sender.is_empty() || owner.is_empty() || collection_id != COLLECTION_CHAIN_ID {
                 continue;
             };
 
             for wsc in transaction_info.changes.iter() {
                 match wsc.change.as_ref().unwrap() {
                     Change::WriteResource(wr) => {
-                        let resource = MoveResource::from_write_resource(
-                            wr,
-                            0, // Placeholder, this isn't used anyway
-                            txn_version,
-                            0, // Placeholder, this isn't used anyway
-                        );
-                        if resource.address == token_id {
-                            if let Some(property_map) =
-                                PropertyMapModel::from_write_resource(wr, txn_version).unwrap()
-                            {
-                                token_property_map = Some(property_map);
-                            }
-                            if let Some(token) =
-                                TokenV2::from_write_resource(wr, txn_version).unwrap()
-                            {
-                                token_data = Some(token);
-                            };
+                        if let Some(property_map) =
+                            PropertyMapModel::from_write_resource(wr, txn_version).unwrap()
+                        {
+                            token_property_map = Some(property_map);
                         }
+                        if let Some(token) =
+                            TokenV2::from_write_resource(wr, txn_version).unwrap()
+                        {
+                            token_data = Some(token);
+                        };
                     },
                     _default => (),
                 }
