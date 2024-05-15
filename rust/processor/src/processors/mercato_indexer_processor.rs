@@ -1,9 +1,8 @@
 use super::{ProcessingResult, ProcessorName, ProcessorTrait};
-use crate::models::token_v2_models::v2_token_utils::{Mint, MintEvent, PropertyMapModel, TokenV2, TransferEvent, V2TokenEvent};
+use crate::models::token_v2_models::v2_token_utils::{PropertyMapModel, TokenV2, TransferEvent, V2TokenEvent};
 use crate::utils::database::{execute_in_chunks, PgDbPool};
 use crate::{
-    models::default_models::move_resources::MoveResource,
-    utils::util::{get_entry_function_from_user_request, standardize_address},
+    utils::util::{standardize_address},
     IndexerGrpcProcessorConfig,
 };
 use ahash::AHashMap;
@@ -91,6 +90,22 @@ impl Debug for MercatoIndexerProcessor {
     }
 }
 
+fn remove_leading_zeros(v: &str) -> String {
+    if v.starts_with("0x") {
+        let hex_digits = &v[2..];
+        let trimmed_digits = hex_digits.trim_start_matches('0');
+        let result_digits = if trimmed_digits.is_empty() {
+            "0"
+        } else {
+            trimmed_digits
+        };
+
+        format!("0x{}", result_digits)
+    } else {
+        v.to_string()
+    }
+}
+
 fn wrap_quotes(v: &str) -> String {
     format!("'{}'", v)
 }
@@ -137,7 +152,7 @@ fn insert_nft_meta_query(
                 vec![
                     wrap_quotes(&n.id),
                     wrap_quotes(&n.name),
-                    wrap_quotes(&n.token_id),
+                    wrap_quotes(&remove_leading_zeros(&n.token_id)),
                     wrap_quotes(COLLECTION_ID),
                     wrap_quotes(CHAIN_ID),
                     wrap_quotes(SMART_CONTRACT_ID),
