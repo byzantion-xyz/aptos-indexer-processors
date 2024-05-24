@@ -234,9 +234,8 @@ impl ProcessorTrait for MercatoProcessor {
 
         println!("Processing new {} transactions", filtered_transactions.len());
 
-
         let processing_start = std::time::Instant::now();
-        let last_transaction_timestamp = filtered_transactions.last().unwrap().timestamp.clone();
+        let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
         let (txns, block_metadata_txns, _, wsc_details) = TransactionModel::from_transactions(&filtered_transactions);
         let processing_duration_in_secs = processing_start.elapsed().as_secs_f64();
         let db_insertion_start = std::time::Instant::now();
