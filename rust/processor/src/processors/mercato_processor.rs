@@ -16,10 +16,13 @@ use diesel::{
     ExpressionMethods,
 };
 use std::fmt::Debug;
+use aptos_protos::transaction::v1::transaction::TxnData;
 use tracing::error;
 use tokio::join;
 use crate::models::default_models::move_resources::MoveResource;
 use crate::models::default_models::write_set_changes::WriteSetChangeDetail;
+use crate::models::user_transactions_models::user_transactions::UserTransactionModel;
+use crate::utils::counters::PROCESSOR_UNKNOWN_TYPE_COUNT;
 
 static INDEXED_RESOURCE_TYPES: &'static [&str] = &["0x4::royalty::Royalty"];
 pub struct MercatoProcessor {
@@ -195,9 +198,42 @@ impl ProcessorTrait for MercatoProcessor {
             end_version = end_version,
             "Processing new transactions",
         );
+        let mut filtered_transactions = vec![];
+        for txn in &transactions {
+            let txn_version = txn.version as i64;
+            let block_height = txn.block_height as i64;
+            let txn_data = match txn.txn_data.as_ref() {
+                Some(txn_data) => txn_data,
+                None => {
+                    PROCESSOR_UNKNOWN_TYPE_COUNT
+                        .with_label_values(&["UserTransactionProcessor"])
+                        .inc();
+                    tracing::warn!(
+                        transaction_version = txn_version,
+                        "Transaction data doesn't exist"
+                    );
+                    continue;
+                },
+            };
+            if let TxnData::User(inner) = txn_data {
+                let (user_transaction, _) = UserTransactionModel::from_transaction(
+                    inner,
+                    txn.timestamp.as_ref().unwrap(),
+                    block_height,
+                    txn.epoch as i64,
+                    txn_version,
+                );
+                if user_transaction.entry_function_id_str != "0x7de3fea83cd5ca0e1def27c3f3803af619882db51f34abf30dd04ad12ee6af31::tapos::play" {
+                    filtered_transactions.push(txn.clone());
+                }
+            } else {
+                filtered_transactions.push(txn.clone());
+            }
+        }
+
         let processing_start = std::time::Instant::now();
-        let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
-        let (txns, block_metadata_txns, _, wsc_details) = TransactionModel::from_transactions(&transactions);
+        let last_transaction_timestamp = filtered_transactions.last().unwrap().timestamp.clone();
+        let (txns, block_metadata_txns, _, wsc_details) = TransactionModel::from_transactions(&filtered_transactions);
         let processing_duration_in_secs = processing_start.elapsed().as_secs_f64();
         let db_insertion_start = std::time::Instant::now();
 
@@ -228,7 +264,7 @@ impl ProcessorTrait for MercatoProcessor {
             &block_metadata_transactions,
             &self.per_table_chunk_sizes,
         )
-        .await;
+            .await;
 
         let db_insertion_duration_in_secs = db_insertion_start.elapsed().as_secs_f64();
         let result = match tx_result {
@@ -257,7 +293,7 @@ impl ProcessorTrait for MercatoProcessor {
             "Processing events",
         );
         self.events_processor
-            .process_transactions(transactions.clone(), start_version, end_version, None)
+            .process_transactions(filtered_transactions.clone(), start_version, end_version, None)
             .await?;
 
         tracing::trace!(
@@ -267,7 +303,7 @@ impl ProcessorTrait for MercatoProcessor {
             "Processing user transactions",
         );
         self.user_transaction_processor
-            .process_transactions(transactions.clone(), start_version, end_version, None)
+            .process_transactions(filtered_transactions.clone(), start_version, end_version, None)
             .await?;
 
         // tracing::trace!(
@@ -277,7 +313,7 @@ impl ProcessorTrait for MercatoProcessor {
         //     "Processing accounts",
         // );
         // self.account_processor
-        //     .process_transactions(transactions, start_version, end_version, None)
+        //     .process_transactions(filtered_transactions, start_version, end_version, None)
         //     .await?;
         tracing::info!(
             name = self.name(),
