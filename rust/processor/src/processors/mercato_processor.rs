@@ -233,6 +233,15 @@ impl ProcessorTrait for MercatoProcessor {
         );
 
         println!("Processing new {} transactions", filtered_transactions.len());
+        if filtered_transactions.len() == 0 {
+            return Ok(ProcessingResult {
+                start_version,
+                end_version,
+                processing_duration_in_secs: 0.0,
+                db_insertion_duration_in_secs: 0.0,
+                last_transaction_timestamp: None,
+            });
+        }
 
         let processing_start = std::time::Instant::now();
         let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
