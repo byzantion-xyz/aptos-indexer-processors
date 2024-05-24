@@ -229,10 +229,10 @@ impl ProcessorTrait for MercatoProcessor {
             name = self.name(),
             start_version = start_version,
             end_version = end_version,
+            count = filtered_transactions.len(),
             "Processing new transactions",
         );
 
-        println!("Processing new {} transactions", filtered_transactions.len());
         if filtered_transactions.len() == 0 {
             return Ok(ProcessingResult {
                 start_version,
