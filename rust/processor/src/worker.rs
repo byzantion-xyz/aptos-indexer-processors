@@ -119,19 +119,19 @@ impl Worker {
     /// 4. We will keep track of the last processed version and monitoring things like TPS
     pub async fn run(&mut self) {
         let processor_name = self.processor_config.name();
-        // info!(
-        //     processor_name = processor_name,
-        //     service_type = PROCESSOR_SERVICE_TYPE,
-        //     "[Parser] Running migrations"
-        // );
-        // let migration_time = std::time::Instant::now();
-        // self.run_migrations().await;
-        // info!(
-        //     processor_name = processor_name,
-        //     service_type = PROCESSOR_SERVICE_TYPE,
-        //     duration_in_secs = migration_time.elapsed().as_secs_f64(),
-        //     "[Parser] Finished migrations"
-        // );
+        info!(
+            processor_name = processor_name,
+            service_type = PROCESSOR_SERVICE_TYPE,
+            "[Parser] Running migrations"
+        );
+        let migration_time = std::time::Instant::now();
+        self.run_migrations().await;
+        info!(
+            processor_name = processor_name,
+            service_type = PROCESSOR_SERVICE_TYPE,
+            duration_in_secs = migration_time.elapsed().as_secs_f64(),
+            "[Parser] Finished migrations"
+        );
 
         let starting_version_from_db = self
             .get_start_version()
