@@ -225,13 +225,14 @@ impl ProcessorTrait for MercatoProcessor {
             }
         }
 
-        let message = format!("Processing new {} transactions", filtered_transactions.len());
         tracing::info!(
             name = self.name(),
             start_version = start_version,
             end_version = end_version,
-            message,
+            "Processing new transactions",
         );
+
+        println!("Processing new {} transactions", filtered_transactions.len());
 
 
         let processing_start = std::time::Instant::now();
