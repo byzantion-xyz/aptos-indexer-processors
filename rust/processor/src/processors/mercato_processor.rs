@@ -78,7 +78,6 @@ async fn insert_to_db(
     end_version: u64,
     txns: &[TransactionModel],
     move_resources: &[MoveResource],
-    block_metadata_transactions: &[BlockMetadataTransactionModel],
     per_table_chunk_sizes: &AHashMap<String, usize>,
 ) -> Result<(), diesel::result::Error> {
     tracing::trace!(
@@ -95,16 +94,6 @@ async fn insert_to_db(
         get_config_table_chunk_size::<TransactionModel>("transactions", per_table_chunk_sizes),
     );
 
-    let bmt_res = execute_in_chunks(
-        conn.clone(),
-        insert_block_metadata_transactions_query,
-        block_metadata_transactions,
-        get_config_table_chunk_size::<BlockMetadataTransactionModel>(
-            "block_metadata_transactions",
-            per_table_chunk_sizes,
-        ),
-    );
-
     let mr_res = execute_in_chunks(
         conn.clone(),
         insert_move_resources_query,
@@ -112,14 +101,42 @@ async fn insert_to_db(
         get_config_table_chunk_size::<MoveResource>("move_resources", per_table_chunk_sizes),
     );
 
-    let (txns_res, bmt_res, mr_res) =
-        join!(txns_res, bmt_res, mr_res);
+    let (txns_res,  mr_res) =
+        join!(txns_res, mr_res);
 
     for res in [
-        txns_res, bmt_res, mr_res
+        txns_res, mr_res
     ] {
         res?;
     }
+
+    Ok(())
+}
+
+async fn insert_block_metadata_to_db(
+    conn: PgDbPool,
+    name: &'static str,
+    start_version: u64,
+    end_version: u64,
+    block_metadata_transactions: &[BlockMetadataTransactionModel],
+    per_table_chunk_sizes: &AHashMap<String, usize>,
+) -> Result<(), diesel::result::Error> {
+    tracing::trace!(
+        name = name,
+        start_version = start_version,
+        end_version = end_version,
+        "Inserting into \"block_metadata_transactions\"",
+    );
+
+    execute_in_chunks(
+        conn.clone(),
+        insert_block_metadata_transactions_query,
+        block_metadata_transactions,
+        get_config_table_chunk_size::<BlockMetadataTransactionModel>(
+            "block_metadata_transactions",
+            per_table_chunk_sizes,
+        ),
+    ).await?;
 
     Ok(())
 }
@@ -274,7 +291,6 @@ impl ProcessorTrait for MercatoProcessor {
             end_version,
             &txns,
             &move_resources,
-            &block_metadata_transactions,
             &self.per_table_chunk_sizes,
         )
             .await;
@@ -328,6 +344,15 @@ impl ProcessorTrait for MercatoProcessor {
         // self.account_processor
         //     .process_transactions(filtered_transactions, start_version, end_version, None)
         //     .await?;
+
+        insert_block_metadata_to_db(
+            self.get_pool(),
+            self.name(),
+            start_version,
+            end_version,
+            &block_metadata_transactions,
+            &self.per_table_chunk_sizes,
+        ).await?;
         tracing::info!(
             name = self.name(),
             start_version = start_version,
