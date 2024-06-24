@@ -1,8 +1,6 @@
 name: "Nightly Check Protobuf Compatibility"
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 9 * * *"
 
 # cancel redundant builds
 concurrency:
@@ -32,7 +30,7 @@ jobs:
         id: get_upstream_commit_version
         run: |
           echo "::set-output name=upstream_commit_version::$(curl -s https://api.mainnet.aptoslabs.com/v1 | jq -r .git_hash)"
-  
+
       - uses: actions/checkout@v4
       - uses: ./.github/actions/protobuf-compatibility-check/
         with:
