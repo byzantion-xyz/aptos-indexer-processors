@@ -1,6 +1,6 @@
 // Copyright © Aptos Foundation
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 #[cfg(target_os = "linux")]
 use aptos_system_utils::profiling::start_cpu_profiling;
 use backtrace::Backtrace;
@@ -9,6 +9,8 @@ use prometheus::{Encoder, TextEncoder};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 #[cfg(target_os = "linux")]
 use std::convert::Infallible;
+// TODO: remove deprecated lint when new clippy nightly is released
+#[allow(deprecated)]
 use std::{fs::File, io::Read, panic::PanicInfo, path::PathBuf, process};
 use tokio::runtime::Handle;
 use tracing::error;
@@ -50,13 +52,11 @@ where
     });
     let main_task_handler = handle.spawn(async move { config.run().await });
     tokio::select! {
-        _ = task_handler => {
-            error!("Probes and metrics handler unexpectedly exited");
-            bail!("Probes and metrics handler unexpectedly exited");
+        res = task_handler => {
+            res.expect("Probes and metrics handler unexpectedly exited")
         },
-        _ = main_task_handler => {
-            error!("Main task unexpectedly exited");
-            bail!("Main task unexpectedly exited");
+        res = main_task_handler => {
+            res.expect("Main task handler unexpectedly exited")
         },
     }
 }
@@ -112,13 +112,18 @@ pub struct CrashInfo {
 /// Tokio's default behavior is to catch panics and ignore them.  Invoking this function will
 /// ensure that all subsequent thread panics (even Tokio threads) will report the
 /// details/backtrace and then exit.
+#[allow(deprecated)]
 pub fn setup_panic_handler() {
+    // TODO: remove deprecated lint when new clippy nightly is released
+    #[allow(deprecated)]
     std::panic::set_hook(Box::new(move |pi: &PanicInfo<'_>| {
         handle_panic(pi);
     }));
 }
 
 // Formats and logs panic information
+// TODO: remove deprecated lint when new clippy nightly is released
+#[allow(deprecated)]
 fn handle_panic(panic_info: &PanicInfo<'_>) {
     // The Display formatter for a PanicInfo contains the message, payload and location.
     let details = format!("{}", panic_info);

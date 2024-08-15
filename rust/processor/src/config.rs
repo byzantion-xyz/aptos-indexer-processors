@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    gap_detector::DEFAULT_GAP_DETECTION_BATCH_SIZE, processors::ProcessorConfig,
+    gap_detectors::DEFAULT_GAP_DETECTION_BATCH_SIZE, processors::ProcessorConfig,
     transaction_filter::TransactionFilter, worker::Worker,
 };
 use ahash::AHashMap;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use server_framework::RunnableConfig;
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 use url::Url;
 
 pub const QUERY_DEFAULT_RETRIES: u32 = 5;
@@ -36,6 +36,9 @@ pub struct IndexerGrpcProcessorConfig {
     // Maximum number of batches "missing" before we assume we have an issue with gaps and abort
     #[serde(default = "IndexerGrpcProcessorConfig::default_gap_detection_batch_size")]
     pub gap_detection_batch_size: u64,
+    // Maximum number of batches "missing" before we assume we have an issue with gaps and abort
+    #[serde(default = "IndexerGrpcProcessorConfig::default_gap_detection_batch_size")]
+    pub parquet_gap_detection_batch_size: u64,
     // Number of protobuff transactions to send per chunk to the processor tasks
     #[serde(default = "IndexerGrpcProcessorConfig::default_pb_channel_txn_chunk_size")]
     pub pb_channel_txn_chunk_size: usize,
@@ -43,8 +46,15 @@ pub struct IndexerGrpcProcessorConfig {
     #[serde(default = "AHashMap::new")]
     pub per_table_chunk_sizes: AHashMap<String, usize>,
     pub enable_verbose_logging: Option<bool>,
+
+    #[serde(default = "IndexerGrpcProcessorConfig::default_grpc_response_item_timeout_in_secs")]
+    pub grpc_response_item_timeout_in_secs: u64,
+
     #[serde(default)]
     pub transaction_filter: TransactionFilter,
+    // String vector for deprecated tables to skip db writes
+    #[serde(default)]
+    pub deprecated_tables: HashSet<String>,
 }
 
 impl IndexerGrpcProcessorConfig {
@@ -65,6 +75,11 @@ impl IndexerGrpcProcessorConfig {
     pub const fn default_pb_channel_txn_chunk_size() -> usize {
         100_000
     }
+
+    /// Default timeout for grpc response item in seconds. Defaults to 60 seconds.
+    pub const fn default_grpc_response_item_timeout_in_secs() -> u64 {
+        60
+    }
 }
 
 #[async_trait::async_trait]
@@ -81,10 +96,13 @@ impl RunnableConfig for IndexerGrpcProcessorConfig {
             self.number_concurrent_processing_tasks,
             self.db_pool_size,
             self.gap_detection_batch_size,
+            self.parquet_gap_detection_batch_size,
             self.pb_channel_txn_chunk_size,
             self.per_table_chunk_sizes.clone(),
             self.enable_verbose_logging,
             self.transaction_filter.clone(),
+            self.grpc_response_item_timeout_in_secs,
+            self.deprecated_tables.clone(),
         )
         .await
         .context("Failed to build worker")?;
@@ -114,6 +132,9 @@ pub struct IndexerGrpcHttp2Config {
 
     /// Indexer GRPC http2 ping timeout in seconds. Defaults to 10.
     indexer_grpc_http2_ping_timeout_in_secs: u64,
+
+    /// Seconds before timeout for grpc connection.
+    indexer_grpc_connection_timeout_secs: u64,
 }
 
 impl IndexerGrpcHttp2Config {
@@ -124,6 +145,10 @@ impl IndexerGrpcHttp2Config {
     pub fn grpc_http2_ping_timeout_in_secs(&self) -> Duration {
         Duration::from_secs(self.indexer_grpc_http2_ping_timeout_in_secs)
     }
+
+    pub fn grpc_connection_timeout_secs(&self) -> Duration {
+        Duration::from_secs(self.indexer_grpc_connection_timeout_secs)
+    }
 }
 
 impl Default for IndexerGrpcHttp2Config {
@@ -131,6 +156,7 @@ impl Default for IndexerGrpcHttp2Config {
         Self {
             indexer_grpc_http2_ping_interval_in_secs: 30,
             indexer_grpc_http2_ping_timeout_in_secs: 10,
+            indexer_grpc_connection_timeout_secs: 5,
         }
     }
 }
