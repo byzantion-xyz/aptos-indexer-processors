@@ -307,7 +307,7 @@ impl MintEvent {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Mint {
-    collection: String,
+    pub collection: String,
     pub index: AggregatorSnapshot,
     token: String,
 }

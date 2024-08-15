@@ -39,6 +39,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use tracing::error;
 use super::{DefaultProcessingResult, ProcessorName, ProcessorTrait};
+use crate::gap_detectors::ProcessingResult;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -320,7 +321,7 @@ impl ProcessorTrait for MercatoTokenV2Processor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<DefaultProcessingResult> {
+    ) -> anyhow::Result<ProcessingResult> {
         tracing::info!(
             name = self.name(),
             start_version = start_version,
@@ -397,13 +398,13 @@ impl ProcessorTrait for MercatoTokenV2Processor {
         );
         
         match tx_result {
-            Ok(_) => Ok(DefaultProcessingResult {
+            Ok(_) => Ok(ProcessingResult::DefaultProcessingResult(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
                 db_insertion_duration_in_secs,
                 last_transaction_timestamp,
-            }),
+            })),
             Err(e) => {
                 error!(
                     start_version = start_version,
@@ -476,7 +477,6 @@ async fn parse_v2_token(
         let transaction_info = txn.info.as_ref().expect("Transaction info doesn't exist!");
 
         if let TxnData::User(user_txn) = txn_data {
-            
             // Get burn events for token v2 by object
             let mut tokens_burned: TokenV2Burned = AHashMap::new();
 
@@ -492,18 +492,8 @@ async fn parse_v2_token(
                         token_v2_metadata_helper.insert(
                             standardize_address(&wr.address.to_string()),
                             ObjectAggregatedData {
-                                aptos_collection: None,
-                                fixed_supply: None,
                                 object,
-                                unlimited_supply: None,
-                                concurrent_supply: None,
-                                property_map: None,
-                                transfer_events: vec![],
-                                token: None,
-                                fungible_asset_metadata: None,
-                                fungible_asset_supply: None,
-                                fungible_asset_store: None,
-                                token_identifier: None,
+                                ..ObjectAggregatedData::default()
                             },
                         );
                     }
@@ -560,8 +550,13 @@ async fn parse_v2_token(
                 if let Some(burn_event) = Burn::from_event(event, txn_version).unwrap() {
                     tokens_burned.insert(burn_event.get_token_address(), burn_event);
                 }
-                if let Some(burn_event) = BurnEvent::from_event(event, txn_version).unwrap() {
-                    tokens_burned.insert(burn_event.get_token_address(), None);
+                if let Some(old_burn_event) = BurnEvent::from_event(event, txn_version).unwrap() {
+                    let burn_event = Burn::new(
+                        standardize_address(event.key.as_ref().unwrap().account_address.as_str()),
+                        old_burn_event.get_token_address(),
+                        "".to_string(),
+                    );
+                    tokens_burned.insert(burn_event.get_token_address(), burn_event);
                 }
                 if let Some(mint_event) = MintEvent::from_event(event, txn_version).unwrap() {
                     tokens_minted.insert(mint_event.get_token_address());
@@ -752,6 +747,7 @@ async fn parse_v2_token(
                                 txn_timestamp,
                                 &prior_nft_ownership,
                                 &tokens_burned,
+                                &token_v2_metadata_helper,
                                 conn,
                                 query_retries,
                                 query_retry_delay_ms,

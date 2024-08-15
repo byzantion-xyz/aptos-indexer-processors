@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use diesel::{pg::Pg, query_builder::QueryFragment};
 use std::fmt::Debug;
 use tracing::error;
+use crate::gap_detectors::ProcessingResult;
 
 pub struct MercatoAccountProcessor {
     connection_pool: ArcDbPool,
@@ -93,7 +94,7 @@ impl ProcessorTrait for MercatoAccountProcessor {
         start_version: u64,
         end_version: u64,
         _db_chain_id: Option<u64>,
-    ) -> anyhow::Result<DefaultProcessingResult> {
+    ) -> anyhow::Result<ProcessingResult> {
         let processing_start = std::time::Instant::now();
         let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
 
@@ -120,13 +121,13 @@ impl ProcessorTrait for MercatoAccountProcessor {
 
         let db_insertion_duration_in_secs = db_insertion_start.elapsed().as_secs_f64();
         match tx_result {
-            Ok(_) => Ok(DefaultProcessingResult {
+            Ok(_) => Ok(ProcessingResult::DefaultProcessingResult(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
                 db_insertion_duration_in_secs,
                 last_transaction_timestamp,
-            }),
+            })),
             Err(err) => {
                 error!(
                     start_version = start_version,

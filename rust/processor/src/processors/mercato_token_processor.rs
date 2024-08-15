@@ -25,6 +25,7 @@ use diesel::{
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use tracing::error;
+use crate::gap_detectors::ProcessingResult;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -232,7 +233,7 @@ impl ProcessorTrait for MercatoTokenProcessor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<DefaultProcessingResult> {
+    ) -> anyhow::Result<ProcessingResult> {
         tracing::info!(
             name = self.name(),
             start_version = start_version,
@@ -271,7 +272,6 @@ impl ProcessorTrait for MercatoTokenProcessor {
                 current_token_ownerships,
                 current_token_datas,
                 current_collection_datas,
-                _e,
             ) = Token::from_transaction(
                 txn,
                 &table_handle_to_owner,
@@ -334,13 +334,13 @@ impl ProcessorTrait for MercatoTokenProcessor {
             "Finished processing new transactions",
         );
         match tx_result {
-            Ok(_) => Ok(DefaultProcessingResult {
+            Ok(_) => Ok(ProcessingResult::DefaultProcessingResult(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
                 db_insertion_duration_in_secs,
                 last_transaction_timestamp,
-            }),
+            })),
             Err(e) => {
                 error!(
                     start_version = start_version,

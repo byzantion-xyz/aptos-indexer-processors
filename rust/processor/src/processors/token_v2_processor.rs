@@ -697,7 +697,7 @@ impl ProcessorTrait for TokenV2Processor {
     }
 }
 
-async fn parse_v2_token(
+pub async fn parse_v2_token(
     transactions: &[Transaction],
     table_handle_to_owner: &TableHandleToOwner,
     conn: &mut DbPoolConnection<'_>,

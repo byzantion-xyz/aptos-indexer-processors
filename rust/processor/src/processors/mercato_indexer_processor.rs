@@ -21,6 +21,7 @@ use serde_json::Value;
 use std::fmt::Debug;
 use tracing::error;
 use uuid::Uuid;
+use crate::gap_detectors::ProcessingResult;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct IndexerNftMeta {
@@ -61,19 +62,16 @@ const CHAIN_ID: &str = "f395c6c8-2d11-419f-856c-d28a8f1c0bca";
 
 pub struct MercatoIndexerProcessor {
     connection_pool: ArcDbPool,
-    config: MercatoIndexerProcessorConfig,
     per_table_chunk_sizes: AHashMap<String, usize>,
 }
 
 impl MercatoIndexerProcessor {
     pub fn new(
         connection_pool: ArcDbPool,
-        config: MercatoIndexerProcessorConfig,
         per_table_chunk_sizes: AHashMap<String, usize>,
     ) -> Self {
         Self {
             connection_pool,
-            config,
             per_table_chunk_sizes,
         }
     }
@@ -279,7 +277,7 @@ impl ProcessorTrait for MercatoIndexerProcessor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<DefaultProcessingResult> {
+    ) -> anyhow::Result<ProcessingResult> {
         tracing::info!(
             name = self.name(),
             start_version = start_version,
@@ -395,13 +393,13 @@ impl ProcessorTrait for MercatoIndexerProcessor {
         )
         .await;
         match tx_result {
-            Ok(_) => Ok(DefaultProcessingResult {
+            Ok(_) => Ok(ProcessingResult::DefaultProcessingResult(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs: 0.0,
                 db_insertion_duration_in_secs: 0.0,
                 last_transaction_timestamp: None,
-            }),
+            })),
             Err(e) => {
                 error!(
                     start_version = start_version,

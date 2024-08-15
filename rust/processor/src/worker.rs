@@ -960,9 +960,8 @@ pub fn build_processor(
             config.clone(),
             per_table_chunk_sizes,
         )),
-        ProcessorConfig::MercatoIndexerProcessor(config) => Processor::from(MercatoIndexerProcessor::new(
+        ProcessorConfig::MercatoIndexerProcessor => Processor::from(MercatoIndexerProcessor::new(
             db_pool,
-            config.clone(),
             per_table_chunk_sizes,
         )),
         ProcessorConfig::TransactionMetadataProcessor => Processor::from(

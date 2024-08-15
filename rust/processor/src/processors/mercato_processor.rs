@@ -25,6 +25,7 @@ use tracing::error;
 use tokio::join;
 use crate::utils::counters::PROCESSOR_UNKNOWN_TYPE_COUNT;
 use super::DefaultProcessingResult;
+use crate::gap_detectors::ProcessingResult;
 
 static INDEXED_RESOURCE_TYPES: &'static [&str] = &["0x4::royalty::Royalty"];
 pub struct MercatoProcessor {
@@ -211,7 +212,7 @@ impl ProcessorTrait for MercatoProcessor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<DefaultProcessingResult> {
+    ) -> anyhow::Result<ProcessingResult> {
         let mut filtered_transactions = vec![];
         for txn in &transactions {
             let txn_version = txn.version as i64;
@@ -255,13 +256,13 @@ impl ProcessorTrait for MercatoProcessor {
         );
 
         if filtered_transactions.len() == 0 {
-            return Ok(DefaultProcessingResult {
+            return Ok(ProcessingResult::DefaultProcessingResult(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs: 0.0,
                 db_insertion_duration_in_secs: 0.0,
                 last_transaction_timestamp: None,
-            });
+            }));
         }
 
         let processing_start = std::time::Instant::now();
@@ -300,13 +301,13 @@ impl ProcessorTrait for MercatoProcessor {
 
         let db_insertion_duration_in_secs = db_insertion_start.elapsed().as_secs_f64();
         let result = match tx_result {
-            Ok(_) => Ok(DefaultProcessingResult {
+            Ok(_) => Ok(ProcessingResult::DefaultProcessingResult(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
                 db_insertion_duration_in_secs,
                 last_transaction_timestamp,
-            }),
+            })),
             Err(e) => {
                 error!(
                     start_version = start_version,
