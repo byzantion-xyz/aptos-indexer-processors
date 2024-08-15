@@ -919,7 +919,7 @@ pub fn build_processor(
             deprecated_tables,
         )),
         ProcessorConfig::MercatoProcessor => {
-            Processor::from(MercatoProcessor::new(db_pool, per_table_chunk_sizes))
+            Processor::from(MercatoProcessor::new(db_pool, per_table_chunk_sizes, deprecated_tables))
         },
         ProcessorConfig::EventsProcessor => {
             Processor::from(EventsProcessor::new(db_pool, per_table_chunk_sizes))

@@ -1,10 +1,14 @@
 use super::{
-    events_processor::EventsProcessor, /*mercato_account_processor::MercatoAccountProcessor, */user_transaction_processor::UserTransactionProcessor, ProcessingResult, ProcessorName, ProcessorTrait
+    events_processor::EventsProcessor, /*mercato_account_processor::MercatoAccountProcessor, */user_transaction_processor::UserTransactionProcessor, ProcessorName, ProcessorTrait
 };
 use crate::{
-    models::default_models::{block_metadata_transactions::BlockMetadataTransactionModel, transactions::TransactionModel},
+    db::common::models::default_models::{block_metadata_transactions::BlockMetadataTransactionModel, transactions::TransactionModel},
     schema,
-    utils::database::{execute_in_chunks, get_config_table_chunk_size, PgDbPool},
+    utils::database::{execute_in_chunks, get_config_table_chunk_size, ArcDbPool},
+    worker::TableFlags,
+    db::common::models::default_models::move_resources::MoveResource,
+    db::common::models::default_models::write_set_changes::WriteSetChangeDetail,
+    db::common::models::user_transactions_models::user_transactions::UserTransactionModel,
 };
 use ahash::AHashMap;
 use anyhow::bail;
@@ -19,14 +23,12 @@ use std::fmt::Debug;
 use aptos_protos::transaction::v1::transaction::TxnData;
 use tracing::error;
 use tokio::join;
-use crate::models::default_models::move_resources::MoveResource;
-use crate::models::default_models::write_set_changes::WriteSetChangeDetail;
-use crate::models::user_transactions_models::user_transactions::UserTransactionModel;
 use crate::utils::counters::PROCESSOR_UNKNOWN_TYPE_COUNT;
+use super::DefaultProcessingResult;
 
 static INDEXED_RESOURCE_TYPES: &'static [&str] = &["0x4::royalty::Royalty"];
 pub struct MercatoProcessor {
-    connection_pool: PgDbPool,
+    connection_pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
     events_processor: EventsProcessor,
     user_transaction_processor: UserTransactionProcessor,
@@ -34,7 +36,7 @@ pub struct MercatoProcessor {
 }
 
 impl MercatoProcessor {
-    pub fn new(connection_pool: PgDbPool, per_table_chunk_sizes: AHashMap<String, usize>) -> Self {
+    pub fn new(connection_pool: ArcDbPool, per_table_chunk_sizes: AHashMap<String, usize>,  deprecated_tables: TableFlags) -> Self {
         let events_processor_connection_pool = connection_pool.clone();
         let user_transaction_processor_connection_pool = connection_pool.clone();
         //let account_processor_pool = connection_pool.clone();
@@ -51,6 +53,7 @@ impl MercatoProcessor {
             user_transaction_processor: UserTransactionProcessor::new(
                 user_transaction_processor_connection_pool,
                 user_transaction_processor_per_table_chunk_sizes,
+                deprecated_tables,
             ),
             // account_processor: MercatoAccountProcessor::new(
             //     account_processor_pool,
@@ -72,7 +75,7 @@ impl Debug for MercatoProcessor {
 }
 
 async fn insert_to_db(
-    conn: PgDbPool,
+    conn: ArcDbPool,
     name: &'static str,
     start_version: u64,
     end_version: u64,
@@ -114,7 +117,7 @@ async fn insert_to_db(
 }
 
 async fn insert_block_metadata_to_db(
-    conn: PgDbPool,
+    conn: ArcDbPool,
     name: &'static str,
     start_version: u64,
     end_version: u64,
@@ -208,7 +211,7 @@ impl ProcessorTrait for MercatoProcessor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<ProcessingResult> {
+    ) -> anyhow::Result<DefaultProcessingResult> {
         let mut filtered_transactions = vec![];
         for txn in &transactions {
             let txn_version = txn.version as i64;
@@ -252,7 +255,7 @@ impl ProcessorTrait for MercatoProcessor {
         );
 
         if filtered_transactions.len() == 0 {
-            return Ok(ProcessingResult {
+            return Ok(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs: 0.0,
@@ -297,7 +300,7 @@ impl ProcessorTrait for MercatoProcessor {
 
         let db_insertion_duration_in_secs = db_insertion_start.elapsed().as_secs_f64();
         let result = match tx_result {
-            Ok(_) => Ok(ProcessingResult {
+            Ok(_) => Ok(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
@@ -362,7 +365,7 @@ impl ProcessorTrait for MercatoProcessor {
         result
     }
 
-    fn connection_pool(&self) -> &PgDbPool {
+    fn connection_pool(&self) -> &ArcDbPool {
         &self.connection_pool
     }
 }

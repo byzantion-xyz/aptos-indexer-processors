@@ -1,6 +1,5 @@
-use super::{ProcessingResult, ProcessorName, ProcessorTrait};
 use crate::{
-    models::{
+    db::common::models::{
         object_models::v2_object_utils::{
             ObjectAggregatedData, ObjectAggregatedDataMapping, ObjectWithMetadata,
         },
@@ -21,7 +20,7 @@ use crate::{
     schema,
     utils::{
         counters::PROCESSOR_UNKNOWN_TYPE_COUNT,
-        database::{execute_in_chunks, get_config_table_chunk_size, PgDbPool, PgPoolConnection},
+        database::{execute_in_chunks, get_config_table_chunk_size, ArcDbPool, DbPoolConnection},
         util::{parse_timestamp, standardize_address},
     },
     IndexerGrpcProcessorConfig,
@@ -39,6 +38,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use tracing::error;
+use super::{DefaultProcessingResult, ProcessorName, ProcessorTrait};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -50,14 +50,14 @@ pub struct MercatoTokenV2ProcessorConfig {
 }
 
 pub struct MercatoTokenV2Processor {
-    connection_pool: PgDbPool,
+    connection_pool: ArcDbPool,
     config: MercatoTokenV2ProcessorConfig,
     per_table_chunk_sizes: AHashMap<String, usize>,
 }
 
 impl MercatoTokenV2Processor {
     pub fn new(
-        connection_pool: PgDbPool,
+        connection_pool: ArcDbPool,
         config: MercatoTokenV2ProcessorConfig,
         per_table_chunk_sizes: AHashMap<String, usize>,
     ) -> Self {
@@ -81,7 +81,7 @@ impl Debug for MercatoTokenV2Processor {
 }
 
 async fn insert_to_db(
-    conn: PgDbPool,
+    conn: ArcDbPool,
     name: &'static str,
     start_version: u64,
     end_version: u64,
@@ -320,7 +320,7 @@ impl ProcessorTrait for MercatoTokenV2Processor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<ProcessingResult> {
+    ) -> anyhow::Result<DefaultProcessingResult> {
         tracing::info!(
             name = self.name(),
             start_version = start_version,
@@ -397,7 +397,7 @@ impl ProcessorTrait for MercatoTokenV2Processor {
         );
         
         match tx_result {
-            Ok(_) => Ok(ProcessingResult {
+            Ok(_) => Ok(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
@@ -417,7 +417,7 @@ impl ProcessorTrait for MercatoTokenV2Processor {
         }
     }
 
-    fn connection_pool(&self) -> &PgDbPool {
+    fn connection_pool(&self) -> &ArcDbPool {
         &self.connection_pool
     }
 }
@@ -425,7 +425,7 @@ impl ProcessorTrait for MercatoTokenV2Processor {
 async fn parse_v2_token(
     transactions: &[Transaction],
     table_handle_to_owner: &TableHandleToOwner,
-    conn: &mut PgPoolConnection<'_>,
+    conn: &mut DbPoolConnection<'_>,
     query_retries: u32,
     query_retry_delay_ms: u64,
 ) -> (
@@ -558,7 +558,7 @@ async fn parse_v2_token(
             // and burn / transfer events need to come before the next section
             for (index, event) in user_txn.events.iter().enumerate() {
                 if let Some(burn_event) = Burn::from_event(event, txn_version).unwrap() {
-                    tokens_burned.insert(burn_event.get_token_address(), Some(burn_event));
+                    tokens_burned.insert(burn_event.get_token_address(), burn_event);
                 }
                 if let Some(burn_event) = BurnEvent::from_event(event, txn_version).unwrap() {
                     tokens_burned.insert(burn_event.get_token_address(), None);

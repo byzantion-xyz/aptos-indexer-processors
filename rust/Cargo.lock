@@ -926,16 +926,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "delete-old-recent-records"
-version = "1.0.0"
-dependencies = [
- "native-tls",
- "postgres-native-tls",
- "tokio",
- "tokio-postgres",
- "tracing",
-
-[[package]]
 name = "delegate"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -944,6 +934,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "delete-old-recent-records"
+version = "1.0.0"
+dependencies = [
+ "native-tls",
+ "postgres-native-tls",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
 ]
 
 [[package]]
@@ -996,7 +997,6 @@ checksum = "206868b8242f27cecce124c19fd88157fbd0dd334df2587f36417bafbc85097b"
 dependencies = [
  "derive_builder_core",
  "syn 2.0.48",
->>>>>>> upstream/main
 ]
 
 [[package]]
@@ -3008,6 +3008,7 @@ dependencies = [
  "jemallocator",
  "kanal",
  "lazy_static",
+ "log",
  "native-tls",
  "num",
  "num_cpus",

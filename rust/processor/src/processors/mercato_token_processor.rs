@@ -1,6 +1,6 @@
-use super::{ProcessingResult, ProcessorName, ProcessorTrait};
+use super::{DefaultProcessingResult, ProcessorName, ProcessorTrait};
 use crate::{
-    models::token_models::{
+    db::common::models::token_models::{
         collection_datas::CurrentCollectionData,
         token_datas::CurrentTokenData,
         token_ownerships::CurrentTokenOwnership,
@@ -10,7 +10,7 @@ use crate::{
         },
     },
     schema,
-    utils::database::{execute_in_chunks, get_config_table_chunk_size, PgDbPool},
+    utils::database::{execute_in_chunks, get_config_table_chunk_size, ArcDbPool},
     IndexerGrpcProcessorConfig,
 };
 use ahash::AHashMap;
@@ -37,14 +37,14 @@ pub struct MercatoTokenProcessorConfig {
 }
 
 pub struct MercatoTokenProcessor {
-    connection_pool: PgDbPool,
+    connection_pool: ArcDbPool,
     config: MercatoTokenProcessorConfig,
     per_table_chunk_sizes: AHashMap<String, usize>,
 }
 
 impl MercatoTokenProcessor {
     pub fn new(
-        connection_pool: PgDbPool,
+        connection_pool: ArcDbPool,
         config: MercatoTokenProcessorConfig,
         per_table_chunk_sizes: AHashMap<String, usize>,
     ) -> Self {
@@ -68,7 +68,7 @@ impl Debug for MercatoTokenProcessor {
 }
 
 async fn insert_to_db(
-    conn: PgDbPool,
+    conn: ArcDbPool,
     name: &'static str,
     start_version: u64,
     end_version: u64,
@@ -232,7 +232,7 @@ impl ProcessorTrait for MercatoTokenProcessor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<ProcessingResult> {
+    ) -> anyhow::Result<DefaultProcessingResult> {
         tracing::info!(
             name = self.name(),
             start_version = start_version,
@@ -334,7 +334,7 @@ impl ProcessorTrait for MercatoTokenProcessor {
             "Finished processing new transactions",
         );
         match tx_result {
-            Ok(_) => Ok(ProcessingResult {
+            Ok(_) => Ok(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
@@ -354,7 +354,7 @@ impl ProcessorTrait for MercatoTokenProcessor {
         }
     }
 
-    fn connection_pool(&self) -> &PgDbPool {
+    fn connection_pool(&self) -> &ArcDbPool {
         &self.connection_pool
     }
 }

@@ -1,8 +1,8 @@
-use super::{ProcessingResult, ProcessorName, ProcessorTrait};
+use super::{DefaultProcessingResult, ProcessorName, ProcessorTrait};
 use crate::{
-    models::account_models::account::Account,
+    db::common::models::account_models::account::Account,
     schema,
-    utils::database::{execute_in_chunks, get_config_table_chunk_size, PgDbPool},
+    utils::database::{execute_in_chunks, get_config_table_chunk_size, ArcDbPool},
 };
 use ahash::AHashMap;
 use anyhow::bail;
@@ -13,12 +13,12 @@ use std::fmt::Debug;
 use tracing::error;
 
 pub struct MercatoAccountProcessor {
-    connection_pool: PgDbPool,
+    connection_pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
 }
 
 impl MercatoAccountProcessor {
-    pub fn new(connection_pool: PgDbPool, per_table_chunk_sizes: AHashMap<String, usize>) -> Self {
+    pub fn new(connection_pool: ArcDbPool, per_table_chunk_sizes: AHashMap<String, usize>) -> Self {
         Self {
             connection_pool,
             per_table_chunk_sizes,
@@ -38,7 +38,7 @@ impl Debug for MercatoAccountProcessor {
 }
 
 async fn insert_to_db(
-    conn: PgDbPool,
+    conn: ArcDbPool,
     name: &'static str,
     start_version: u64,
     end_version: u64,
@@ -93,7 +93,7 @@ impl ProcessorTrait for MercatoAccountProcessor {
         start_version: u64,
         end_version: u64,
         _db_chain_id: Option<u64>,
-    ) -> anyhow::Result<ProcessingResult> {
+    ) -> anyhow::Result<DefaultProcessingResult> {
         let processing_start = std::time::Instant::now();
         let last_transaction_timestamp = transactions.last().unwrap().timestamp.clone();
 
@@ -120,7 +120,7 @@ impl ProcessorTrait for MercatoAccountProcessor {
 
         let db_insertion_duration_in_secs = db_insertion_start.elapsed().as_secs_f64();
         match tx_result {
-            Ok(_) => Ok(ProcessingResult {
+            Ok(_) => Ok(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs,
@@ -140,7 +140,7 @@ impl ProcessorTrait for MercatoAccountProcessor {
         }
     }
 
-    fn connection_pool(&self) -> &PgDbPool {
+    fn connection_pool(&self) -> &ArcDbPool {
         &self.connection_pool
     }
 }

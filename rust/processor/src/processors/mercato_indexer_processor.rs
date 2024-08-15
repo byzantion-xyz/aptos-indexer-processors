@@ -1,8 +1,8 @@
-use super::{ProcessingResult, ProcessorName, ProcessorTrait};
-use crate::models::token_v2_models::v2_token_utils::{PropertyMapModel, TokenV2, TransferEvent, V2TokenEvent};
-use crate::utils::database::{execute_in_chunks, PgDbPool};
+use super::{DefaultProcessingResult, ProcessorName, ProcessorTrait};
+use  crate::db::common::models::token_v2_models::v2_token_utils::{PropertyMapModel, TokenV2, TransferEvent, V2TokenEvent};
+use crate::utils::database::{execute_in_chunks, ArcDbPool};
 use crate::{
-    utils::util::{standardize_address},
+    utils::util::standardize_address,
     IndexerGrpcProcessorConfig,
 };
 use ahash::AHashMap;
@@ -10,7 +10,7 @@ use anyhow::bail;
 use aptos_protos::transaction::v1::{transaction::TxnData, write_set_change::Change, Transaction};
 use aptos_protos::util::timestamp::Timestamp;
 use async_trait::async_trait;
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 use core::option::Option;
 use diesel::pg::Pg;
 use diesel::prelude::*;
@@ -60,14 +60,14 @@ const SMART_CONTRACT_ID: &str = "bd280fe5-f59f-405e-82d7-71e3ff2065cb"; /*"c568a
 const CHAIN_ID: &str = "f395c6c8-2d11-419f-856c-d28a8f1c0bca";
 
 pub struct MercatoIndexerProcessor {
-    connection_pool: PgDbPool,
+    connection_pool: ArcDbPool,
     config: MercatoIndexerProcessorConfig,
     per_table_chunk_sizes: AHashMap<String, usize>,
 }
 
 impl MercatoIndexerProcessor {
     pub fn new(
-        connection_pool: PgDbPool,
+        connection_pool: ArcDbPool,
         config: MercatoIndexerProcessorConfig,
         per_table_chunk_sizes: AHashMap<String, usize>,
     ) -> Self {
@@ -115,7 +115,7 @@ fn wrap_properties(v: &Value) -> String {
 }
 
 async fn insert_to_db(
-    conn_pool: &PgDbPool,
+    conn_pool: &ArcDbPool,
     name: &'static str,
     start_version: u64,
     end_version: u64,
@@ -210,12 +210,10 @@ fn insert_actions_query(
                 wrap_quotes(&nft.owner),
                 nft.owner_block_height.to_string(),
                 wrap_quotes(
-                    &NaiveDateTime::from_timestamp_opt(
+                    &DateTime::from_timestamp(
                         nft.owner_tx_time.seconds,
                         nft.owner_tx_time.nanos as u32,
-                    )
-                    .unwrap()
-                    .to_string(),
+                    ).unwrap().to_string(),
                 ),
                 nft.owner_tx_version.to_string(),
                 wrap_quotes(COLLECTION_ID),
@@ -233,11 +231,10 @@ fn insert_actions_query(
                 wrap_quotes(&nft.owner),
                 nft.owner_block_height.to_string(),
                 wrap_quotes(
-                    &NaiveDateTime::from_timestamp_opt(
+                    &DateTime::from_timestamp(
                         nft.owner_tx_time.seconds,
                         nft.owner_tx_time.nanos as u32,
-                    )
-                    .unwrap()
+                    ).unwrap()
                     .to_string(),
                 ),
                 nft.owner_tx_version.to_string(),
@@ -282,7 +279,7 @@ impl ProcessorTrait for MercatoIndexerProcessor {
         start_version: u64,
         end_version: u64,
         _: Option<u64>,
-    ) -> anyhow::Result<ProcessingResult> {
+    ) -> anyhow::Result<DefaultProcessingResult> {
         tracing::info!(
             name = self.name(),
             start_version = start_version,
@@ -398,7 +395,7 @@ impl ProcessorTrait for MercatoIndexerProcessor {
         )
         .await;
         match tx_result {
-            Ok(_) => Ok(ProcessingResult {
+            Ok(_) => Ok(DefaultProcessingResult {
                 start_version,
                 end_version,
                 processing_duration_in_secs: 0.0,
@@ -418,7 +415,7 @@ impl ProcessorTrait for MercatoIndexerProcessor {
         }
     }
 
-    fn connection_pool(&self) -> &PgDbPool {
+    fn connection_pool(&self) -> &ArcDbPool {
         &self.connection_pool
     }
 }
