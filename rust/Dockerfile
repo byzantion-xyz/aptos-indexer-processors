@@ -2,7 +2,7 @@
 
 # Stage 1: Build the binary
 
-FROM rust:slim-bullseye as builder
+FROM rust:1.75-slim-bullseye as builder
 
 WORKDIR /app
 
@@ -14,8 +14,6 @@ RUN cargo build --locked --release -p delete-old-recent-records
 RUN cp target/release/delete-old-recent-records /usr/local/bin
 RUN cargo build --locked --release -p processor
 RUN cp target/release/processor /usr/local/bin
-#RUN cargo build --locked --release -p indexer-metrics
-#RUN cp target/release/indexer-metrics /usr/local/bin
 
 # add build info
 ARG GIT_TAG
@@ -32,6 +30,7 @@ FROM debian:bullseye-slim
 COPY --from=builder /usr/local/bin/delete-old-recent-records /usr/local/bin
 COPY --from=builder /usr/local/bin/processor /usr/local/bin
 #COPY --from=builder /usr/local/bin/indexer-metrics /usr/local/bin
+#COPY --from=builder /usr/local/bin/sdk-processor /usr/local/bin
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
