@@ -2,7 +2,7 @@
 
 # Stage 1: Build the binary
 
-FROM rust:1.75-slim-bullseye as builder
+FROM rust:1.79-slim-bullseye as builder
 
 WORKDIR /app
 
