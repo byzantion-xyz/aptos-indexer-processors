@@ -1,4 +1,3 @@
-// Copyright © Aptos Foundation
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{DefaultProcessingResult, ProcessorName, ProcessorTrait};
@@ -25,6 +24,7 @@ use diesel::{
 };
 use std::fmt::Debug;
 use tracing::error;
+use crate::db::common::models::launchpad_models::LaunchpadTransactionModel;
 
 pub struct UserTransactionProcessor {
     connection_pool: ArcDbPool,
@@ -64,6 +64,7 @@ async fn insert_to_db(
     end_version: u64,
     user_transactions: &[UserTransactionModel],
     signatures: &[Signature],
+    launchpad_transactions: &[LaunchpadTransactionModel],
     per_table_chunk_sizes: &AHashMap<String, usize>,
 ) -> Result<(), diesel::result::Error> {
     tracing::trace!(
@@ -83,14 +84,20 @@ async fn insert_to_db(
         ),
     );
     let is = execute_in_chunks(
-        conn,
+        conn.clone(),
         insert_signatures_query,
         signatures,
         get_config_table_chunk_size::<Signature>("signatures", per_table_chunk_sizes),
     );
+    let lt = execute_in_chunks(
+        conn,
+        insert_launchpad_transactions_query,
+        launchpad_transactions,
+        get_config_table_chunk_size::<LaunchpadTransactionModel>("launchpad_transactions", per_table_chunk_sizes),
+    );
 
-    let (ut_res, is_res) = futures::join!(ut, is);
-    for res in [ut_res, is_res] {
+    let (ut_res, is_res, is_lt) = futures::join!(ut, is, lt);
+    for res in [ut_res, is_res, is_lt] {
         res?;
     }
     Ok(())
@@ -137,6 +144,24 @@ fn insert_signatures_query(
     )
 }
 
+fn insert_launchpad_transactions_query(
+    items_to_insert: Vec<LaunchpadTransactionModel>,
+) -> (
+    impl QueryFragment<Pg> + diesel::query_builder::QueryId + Send,
+    Option<&'static str>,
+) {
+    use schema::launchpad_transactions::dsl::*;
+    (
+        diesel::insert_into(schema::launchpad_transactions::table)
+            .values(items_to_insert)
+            .on_conflict((
+                id,
+            ))
+            .do_nothing(),
+        None,
+    )
+}
+
 #[async_trait]
 impl ProcessorTrait for UserTransactionProcessor {
     fn name(&self) -> &'static str {
@@ -155,6 +180,7 @@ impl ProcessorTrait for UserTransactionProcessor {
 
         let mut signatures = vec![];
         let mut user_transactions = vec![];
+        let mut launchpad_transactions = vec![];
         for txn in &transactions {
             let txn_version = txn.version as i64;
             let block_height = txn.block_height as i64;
@@ -180,6 +206,14 @@ impl ProcessorTrait for UserTransactionProcessor {
                     txn_version,
                 );
                 signatures.extend(sigs);
+                if user_transaction.entry_function_id_str.starts_with("0x148b9318f5a3f5632431a255474930ba3e1a498d7e0697e20504b141fcf0df41::launchpad::") {
+                    let launchpad_transaction = LaunchpadTransactionModel::from_transaction(
+                        inner,
+                        txn.timestamp.as_ref().unwrap(),
+                        &*txn.info.as_ref().unwrap().hash,
+                    );
+                    launchpad_transactions.push(launchpad_transaction);
+                }
                 user_transactions.push(user_transaction);
             }
         }
@@ -198,6 +232,7 @@ impl ProcessorTrait for UserTransactionProcessor {
             end_version,
             &user_transactions,
             &signatures,
+            &launchpad_transactions,
             &self.per_table_chunk_sizes,
         )
         .await;

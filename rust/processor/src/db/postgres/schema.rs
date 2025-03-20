@@ -1264,6 +1264,20 @@ diesel::table! {
 }
 
 diesel::table! {
+    launchpad_transactions (id) {
+        #[max_length = 100]
+        id -> Varchar,
+        timestamp -> Int8,
+        #[max_length = 66]
+        sender -> Varchar,
+        payload -> Jsonb,
+        error_count -> Int4,
+        #[max_length = 500]
+        error -> Nullable<Varchar>,
+    }
+}
+
+diesel::table! {
     write_set_changes (transaction_version, index) {
         transaction_version -> Int8,
         index -> Int8,
@@ -1354,6 +1368,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     transaction_size_info,
     transactions,
     user_transactions,
+    launchpad_transactions,
     write_set_changes,
     write_set_size_info,
 );
