@@ -209,7 +209,7 @@ impl ProcessorTrait for UserTransactionProcessor {
                 let txn_info = txn.info.as_ref().unwrap();
                 if user_transaction.entry_function_id_str.starts_with("0x148b9318f5a3f5632431a255474930ba3e1a498d7e0697e20504b141fcf0df41::launchpad::") && txn_info.success {
                     let launchpad_transaction = LaunchpadTransactionModel::from_transaction(
-                        user_transaction.sender.as_str(),
+                        inner,
                         &txn
                     );
                     launchpad_transactions.push(launchpad_transaction);

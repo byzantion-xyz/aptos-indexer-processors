@@ -1,8 +1,8 @@
 #![allow(clippy::extra_unused_lifetimes)]
 
-use aptos_indexer_processor_sdk::utils::convert::standardize_address;
-use aptos_protos::transaction::v1::{Transaction, UserTransaction, WriteSetChange};
-use aptos_protos::util::timestamp::Timestamp;
+use aptos_protos::transaction::v1::{Transaction, UserTransaction};
+use aptos_protos::transaction::v1::write_set_change::Change;
+use aptos_protos::transaction::v1::write_set_change::Type::WriteResource;
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
 
@@ -22,16 +22,49 @@ pub struct LaunchpadTransaction {
 
 impl LaunchpadTransaction {
     pub fn from_transaction(
-        sender: &str,
+        user_txn: &UserTransaction,
         txn: &Transaction,
     ) -> Self {
-        let info = txn.info.as_ref().unwrap();
-        let hash_str = format!("0x{}", hex::encode(info.hash.clone()));
+        let txn_info = txn.info.as_ref().unwrap();
+        let user_txn_request = user_txn.request.as_ref().unwrap();
+        let hash_str = format!("0x{}", hex::encode(txn_info.hash.clone()));
+        let sender_str = user_txn_request.sender.clone();
+        let changes: Vec<serde_json::Value> = txn_info.changes.iter().filter(|ch| ch.r#type == WriteResource as i32).map(|ch|  {
+            match ch.change.as_ref().unwrap() {
+                Change::WriteResource(res) => {
+                    serde_json::json!({
+                        "address": res.address,
+                        "type": "write_resource",
+                        "data": serde_json::json!({
+                            "type": res.type_str,
+                            "data": serde_json::from_str(res.data.as_str()).unwrap_or(serde_json::Value::Null),
+                        }),
+                    })
+                },
+                _ => panic!("Invalid change type"),
+            }
+        }).collect();
+        let events: Vec<serde_json::Value> = user_txn.events.iter().map(|ev| {
+            serde_json::json!({
+                "sequence_number": ev.sequence_number.to_string(),
+                "type": ev.type_str,
+                "data": serde_json::from_str(ev.data.as_str()).unwrap_or(serde_json::Value::Null),
+            })
+        }).collect();
         Self {
             id: hash_str.clone(),
             timestamp: txn.timestamp.as_ref().unwrap().seconds,
-            sender: standardize_address(sender),
-            payload: serde_json::to_value(txn.clone()).unwrap(),
+            sender: sender_str.clone(),
+            payload: serde_json::json!({
+                "hash": hash_str,
+                "version": txn.version.to_string(),
+                "gas_used": txn_info.gas_used.to_string(),
+                "sender": sender_str,
+                "success": txn_info.success,
+                "vm_status": txn_info.vm_status.to_string(),
+                "changes": changes,
+                "events": events,
+            }),
             error_count: 0,
             error: None,
         }
