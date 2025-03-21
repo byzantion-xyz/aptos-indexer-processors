@@ -41,7 +41,7 @@ impl LaunchpadTransaction {
                         }),
                     })
                 },
-                _ => panic!("Invalid change type"),
+                _ => serde_json::json!({}),
             }
         }).collect();
         let events: Vec<serde_json::Value> = user_txn.events.iter().map(|ev| {
