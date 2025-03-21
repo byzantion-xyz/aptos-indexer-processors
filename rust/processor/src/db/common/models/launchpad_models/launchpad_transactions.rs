@@ -1,7 +1,7 @@
 #![allow(clippy::extra_unused_lifetimes)]
 
 use aptos_indexer_processor_sdk::utils::convert::standardize_address;
-use aptos_protos::transaction::v1::UserTransaction;
+use aptos_protos::transaction::v1::{Transaction, UserTransaction, WriteSetChange};
 use aptos_protos::util::timestamp::Timestamp;
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
@@ -22,19 +22,16 @@ pub struct LaunchpadTransaction {
 
 impl LaunchpadTransaction {
     pub fn from_transaction(
-        txn: &UserTransaction,
-        timestamp: &Timestamp,
-        hash: &[u8],
+        sender: &str,
+        txn: &Transaction,
     ) -> Self {
-        let request = txn.request.as_ref().unwrap();
+        let info = txn.info.as_ref().unwrap();
+        let hash_str = format!("0x{}", hex::encode(info.hash.clone()));
         Self {
-            id: "0x".to_owned() + &hex::encode(hash),
-            timestamp: timestamp.seconds,
-            sender: standardize_address(&request.sender),
-            payload: serde_json::to_value(request.payload.clone().unwrap_or_default()).unwrap_or_else(|_| {
-                tracing::error!("Unable to serialize payload into value");
-                panic!()
-            }),
+            id: hash_str.clone(),
+            timestamp: txn.timestamp.as_ref().unwrap().seconds,
+            sender: standardize_address(sender),
+            payload: serde_json::to_value(txn.clone()).unwrap(),
             error_count: 0,
             error: None,
         }
