@@ -294,7 +294,14 @@ pub fn parse_timestamp(ts: &Timestamp, version: i64) -> chrono::NaiveDateTime {
             nanos: 0,
         }
     } else {
-        ts.clone()
+        if (ts.seconds < 0) {
+            Timestamp {
+                seconds: 0,
+                nanos: 0,
+            }
+        } else {
+            ts.clone()
+        }
     };
     #[allow(deprecated)]
     chrono::NaiveDateTime::from_timestamp_opt(final_ts.seconds, final_ts.nanos as u32)
