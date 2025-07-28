@@ -239,7 +239,10 @@ impl ProcessorTrait for MercatoProcessor {
                     txn_version,
                 );
                 if !(user_transaction.entry_function_id_str.starts_with("0x7de3fea83cd5ca0e1def27c3f3803af619882db51f34abf30dd04ad12ee6af31::") && user_transaction.entry_function_id_str.ends_with("::play")) &&
-                    !user_transaction.entry_function_id_str.starts_with("0x3c1d4a86594d681ff7e5d5a233965daeabdc6a15fe5672ceeda5260038857183::") {
+                    !user_transaction.entry_function_id_str.starts_with("0x3c1d4a86594d681ff7e5d5a233965daeabdc6a15fe5672ceeda5260038857183::") &&
+                    !user_transaction.entry_function_id_str.starts_with("0x664f1da7f6256b26a7808e0e5b02e747c4c6450e92b602740a2a5514bba91e52::game::") &&
+                    !user_transaction.entry_function_id_str.starts_with("0x2387f5f16330dbb0236b1776a0d86c7a4901daaa25cd61ecb33709e025d3172f::esports_game_tracker::")
+                {
                     filtered_transactions.push(txn.clone());
                 }
             } else {
