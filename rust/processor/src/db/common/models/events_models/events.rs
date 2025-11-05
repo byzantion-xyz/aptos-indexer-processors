@@ -29,7 +29,7 @@ pub struct Event {
     pub indexed_type: String,
 }
 
-fn sanitize_type_string(s: &str) -> String {
+fn sanitize_string(s: &str) -> String {
     s.replace("\\u", "\\\\u")
      .replace("\\U", "\\\\U")
      .replace("\\x", "\\\\x")  
@@ -51,10 +51,10 @@ impl Event {
             sequence_number: event.sequence_number as i64,
             transaction_version,
             transaction_block_height,
-            type_: sanitize_type_string(t),
+            type_: sanitize_string(t),
             data: serde_json::from_str(event.data.as_str()).unwrap(),
             event_index,
-            indexed_type: sanitize_type_string(truncate_str(t, EVENT_TYPE_MAX_LENGTH).as_str()),
+            indexed_type: sanitize_string(truncate_str(t, EVENT_TYPE_MAX_LENGTH).as_str()),
         }
     }
 
