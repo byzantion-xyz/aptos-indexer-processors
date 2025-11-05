@@ -43,6 +43,7 @@ impl Event {
         event_index: i64,
     ) -> Self {
         let t: &str = event.type_str.as_ref();
+        println!("Original event string: {}", event.data);
         Event {
             account_address: standardize_address(
                 event.key.as_ref().unwrap().account_address.as_str(),
