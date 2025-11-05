@@ -92,6 +92,9 @@ impl Signature {
     }
 
     pub fn get_signature_type(t: &TransactionSignaturePb) -> String {
+        if t.signature.as_ref().is_none() {
+            return String::from("unknown");
+        }
         match t.signature.as_ref().unwrap() {
             SignatureEnum::Ed25519(_) => String::from("ed25519_signature"),
             SignatureEnum::MultiEd25519(_) => String::from("multi_ed25519_signature"),
@@ -111,6 +114,7 @@ impl Signature {
                     AccountSignatureEnum::MultiKeySignature(_) => {
                         String::from("multi_key_signature")
                     },
+                    _ => String::from("abstraction_signature"),
                 }
             },
         }
