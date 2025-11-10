@@ -288,6 +288,10 @@ impl Signature {
         multi_agent_index: i64,
         override_address: Option<&String>,
     ) -> Vec<Self> {
+        if (s.signature.as_ref().is_none()) {
+            return vec![];
+        }
+
         let signature = s.signature.as_ref().unwrap();
         match signature {
             AccountSignatureEnum::Ed25519(sig) => vec![Self::parse_ed25519_signature(
@@ -328,6 +332,13 @@ impl Signature {
                 multi_agent_index,
                 override_address,
             ),
+            _ => {
+                tracing::warn!(
+                    transaction_version = transaction_version,
+                    "Abstraction signature type is not yet supported"
+                );
+                vec![]
+            },
         }
     }
 
