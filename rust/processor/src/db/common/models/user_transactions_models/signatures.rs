@@ -101,11 +101,14 @@ impl Signature {
             SignatureEnum::MultiAgent(_) => String::from("multi_agent_signature"),
             SignatureEnum::FeePayer(_) => String::from("fee_payer_signature"),
             SignatureEnum::SingleSender(sender) => {
-                if sender.sender.is_none() || account_signature.signature.is_none() {
+                if sender.sender.is_none() {
                     return String::from("unknown");
                 }
-                
+
                 let account_signature = sender.sender.as_ref().unwrap();
+                if account_signature.signature.is_none() {
+                    return String::from("abstraction_signature");
+                }
                 let signature = account_signature.signature.as_ref().unwrap();
                 match signature {
                     AccountSignatureEnum::Ed25519(_) => String::from("ed25519_signature"),
