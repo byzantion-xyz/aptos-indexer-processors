@@ -92,7 +92,7 @@ impl Signature {
     }
 
     pub fn get_signature_type(t: &TransactionSignaturePb) -> String {
-        if t.signature.as_ref().is_none() {
+        if t.signature.is_none() {
             return String::from("unknown");
         }
         match t.signature.as_ref().unwrap() {
@@ -101,6 +101,10 @@ impl Signature {
             SignatureEnum::MultiAgent(_) => String::from("multi_agent_signature"),
             SignatureEnum::FeePayer(_) => String::from("fee_payer_signature"),
             SignatureEnum::SingleSender(sender) => {
+                if sender.sender.is_none() || account_signature.signature.is_none() {
+                    return String::from("unknown");
+                }
+                
                 let account_signature = sender.sender.as_ref().unwrap();
                 let signature = account_signature.signature.as_ref().unwrap();
                 match signature {
