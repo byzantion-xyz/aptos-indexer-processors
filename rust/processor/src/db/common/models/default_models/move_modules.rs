@@ -11,6 +11,19 @@ use aptos_protos::transaction::v1::{
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
 
+fn safe_to_json_value<T: Serialize>(value: &T) -> Option<serde_json::Value> {
+    match serde_json::to_value(value) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "Failed to serialize move ABI field; dropping value to avoid processor panic"
+            );
+            None
+        },
+    }
+}
+
 #[derive(
     Associations, Clone, Debug, Deserialize, FieldCount, Identifiable, Insertable, Serialize,
 )]
@@ -112,17 +125,17 @@ impl MoveModule {
             exposed_functions: move_module
                 .exposed_functions
                 .iter()
-                .map(|move_func| serde_json::to_value(move_func).unwrap())
+                .filter_map(safe_to_json_value)
                 .collect(),
             friends: move_module
                 .friends
                 .iter()
-                .map(|move_module_id| serde_json::to_value(move_module_id).unwrap())
+                .filter_map(safe_to_json_value)
                 .collect(),
             structs: move_module
                 .structs
                 .iter()
-                .map(|move_struct| serde_json::to_value(move_struct).unwrap())
+                .filter_map(safe_to_json_value)
                 .collect(),
         }
     }

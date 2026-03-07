@@ -15,6 +15,30 @@ use field_count::FieldCount;
 use parquet_derive::ParquetRecordWriter;
 use serde::{Deserialize, Serialize};
 
+fn safe_to_canonical_json_string<T: Serialize>(value: &T) -> Option<String> {
+    let json_value = match serde_json::to_value(value) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "Failed to serialize parquet move ABI field; dropping value to avoid processor panic"
+            );
+            return None;
+        },
+    };
+
+    match canonical_json::to_string(&json_value) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "Failed to canonicalize parquet move ABI field; dropping value to avoid processor panic"
+            );
+            None
+        },
+    }
+}
+
 #[derive(
     Allocative, Clone, Debug, Default, Deserialize, FieldCount, ParquetRecordWriter, Serialize,
 )]
@@ -135,20 +159,17 @@ impl MoveModule {
             exposed_functions: move_module
                 .exposed_functions
                 .iter()
-                .map(|move_func| serde_json::to_value(move_func).unwrap())
-                .map(|value| canonical_json::to_string(&value).unwrap())
+                .filter_map(safe_to_canonical_json_string)
                 .collect(),
             friends: move_module
                 .friends
                 .iter()
-                .map(|move_module_id| serde_json::to_value(move_module_id).unwrap())
-                .map(|value| canonical_json::to_string(&value).unwrap())
+                .filter_map(safe_to_canonical_json_string)
                 .collect(),
             structs: move_module
                 .structs
                 .iter()
-                .map(|move_struct| serde_json::to_value(move_struct).unwrap())
-                .map(|value| canonical_json::to_string(&value).unwrap())
+                .filter_map(safe_to_canonical_json_string)
                 .collect(),
         }
     }
