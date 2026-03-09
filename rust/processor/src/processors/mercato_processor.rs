@@ -5,10 +5,10 @@ use crate::{
     db::common::models::default_models::{block_metadata_transactions::BlockMetadataTransactionModel, transactions::TransactionModel},
     schema,
     utils::database::{execute_in_chunks, get_config_table_chunk_size, ArcDbPool},
+    utils::util::get_entry_function_from_user_request,
     worker::TableFlags,
     db::common::models::default_models::move_resources::MoveResource,
     db::common::models::default_models::write_set_changes::WriteSetChangeDetail,
-    db::common::models::user_transactions_models::user_transactions::UserTransactionModel,
 };
 use ahash::AHashMap;
 use anyhow::bail;
@@ -231,19 +231,19 @@ impl ProcessorTrait for MercatoProcessor {
                 },
             };
             if let TxnData::User(inner) = txn_data {
-                let (user_transaction, _) = UserTransactionModel::from_transaction(
-                    inner,
-                    txn.timestamp.as_ref().unwrap(),
-                    block_height,
-                    txn.epoch as i64,
-                    txn_version,
-                );
-                if !(user_transaction.entry_function_id_str.starts_with("0x7de3fea83cd5ca0e1def27c3f3803af619882db51f34abf30dd04ad12ee6af31::") && user_transaction.entry_function_id_str.ends_with("::play")) &&
-                    !user_transaction.entry_function_id_str.starts_with("0x3c1d4a86594d681ff7e5d5a233965daeabdc6a15fe5672ceeda5260038857183::") &&
-                    !user_transaction.entry_function_id_str.starts_with("0x664f1da7f6256b26a7808e0e5b02e747c4c6450e92b602740a2a5514bba91e52::game::") &&
-                    !user_transaction.entry_function_id_str.starts_with("0x2387f5f16330dbb0236b1776a0d86c7a4901daaa25cd61ecb33709e025d3172f::esports_game_tracker::") &&
-                    !user_transaction.entry_function_id_str.starts_with("0x50ead22afd6ffd9769e3b3d6e0e64a2a350d68e8b102c4e72e33d0b8cfdfdb06::admin_apis::") &&
-                    !user_transaction.entry_function_id_str.eq("0x1::coin::migrate_coin_store_to_fungible_store")
+                let entry_function_id_str = inner
+                    .request
+                    .as_ref()
+                    .and_then(|req| get_entry_function_from_user_request(req))
+                    .unwrap_or_default();
+                if !(entry_function_id_str.starts_with("0x7de3fea83cd5ca0e1def27c3f3803af619882db51f34abf30dd04ad12ee6af31::") && entry_function_id_str.ends_with("::play")) &&
+                    !entry_function_id_str.starts_with("0x3c1d4a86594d681ff7e5d5a233965daeabdc6a15fe5672ceeda5260038857183::") &&
+                    !entry_function_id_str.starts_with("0x664f1da7f6256b26a7808e0e5b02e747c4c6450e92b602740a2a5514bba91e52::game::") &&
+                    !entry_function_id_str.starts_with("0x2387f5f16330dbb0236b1776a0d86c7a4901daaa25cd61ecb33709e025d3172f::esports_game_tracker::") &&
+                    !entry_function_id_str.starts_with("0x50ead22afd6ffd9769e3b3d6e0e64a2a350d68e8b102c4e72e33d0b8cfdfdb06::admin_apis::") &&
+                    !entry_function_id_str.starts_with("0x50ead22afd6ffd9769e3b3d6e0e64a2a350d68e8b102c4e72e33d0b8cfdfdb06::dex_accounts_entry::") &&
+                    !entry_function_id_str.eq("0x87eaa1f3f6e80882f9535344f2ef5bb5efde9ecd25fbe6b36a0f290e199a9d04::PhotonRouterModule::participate_in_campaign_router") &&
+                    !entry_function_id_str.eq("0x1::coin::migrate_coin_store_to_fungible_store")
                 {
                     filtered_transactions.push(txn.clone());
                 }
