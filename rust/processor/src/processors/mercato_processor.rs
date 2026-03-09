@@ -242,6 +242,7 @@ impl ProcessorTrait for MercatoProcessor {
                     !user_transaction.entry_function_id_str.starts_with("0x3c1d4a86594d681ff7e5d5a233965daeabdc6a15fe5672ceeda5260038857183::") &&
                     !user_transaction.entry_function_id_str.starts_with("0x664f1da7f6256b26a7808e0e5b02e747c4c6450e92b602740a2a5514bba91e52::game::") &&
                     !user_transaction.entry_function_id_str.starts_with("0x2387f5f16330dbb0236b1776a0d86c7a4901daaa25cd61ecb33709e025d3172f::esports_game_tracker::") &&
+                    !user_transaction.entry_function_id_str.starts_with("0x50ead22afd6ffd9769e3b3d6e0e64a2a350d68e8b102c4e72e33d0b8cfdfdb06::admin_apis::") &&
                     !user_transaction.entry_function_id_str.eq("0x1::coin::migrate_coin_store_to_fungible_store")
                 {
                     filtered_transactions.push(txn.clone());
