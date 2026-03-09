@@ -47,22 +47,16 @@ impl MoveModule {
         transaction_version: i64,
         transaction_block_height: i64,
     ) -> Self {
-        let parsed_data = Self::convert_move_module_bytecode(write_module.data.as_ref().unwrap());
         Self {
             transaction_version,
             transaction_block_height,
             write_set_change_index,
-            // TODO: remove the useless_asref lint when new clippy nighly is released.
-            #[allow(clippy::useless_asref)]
-            name: parsed_data
-                .clone()
-                .map(|d| d.name.clone())
-                .unwrap_or_default(),
+            name: String::new(),
             address: standardize_address(&write_module.address.to_string()),
-            bytecode: parsed_data.clone().map(|d| d.bytecode.clone()),
-            exposed_functions: parsed_data.clone().map(|d| d.exposed_functions.clone()),
-            friends: parsed_data.clone().map(|d| d.friends.clone()),
-            structs: parsed_data.map(|d| d.structs.clone()),
+            bytecode: None,
+            exposed_functions: None,
+            friends: None,
+            structs: None,
             is_deleted: false,
         }
     }
@@ -93,37 +87,5 @@ impl MoveModule {
         }
     }
 
-    pub fn convert_move_module_bytecode(
-        mmb: &MoveModuleBytecode,
-    ) -> Option<MoveModuleByteCodeParsed> {
-        mmb.abi
-            .as_ref()
-            .map(|abi| Self::convert_move_module(abi, mmb.bytecode.clone()))
-    }
-
-    pub fn convert_move_module(
-        move_module: &MoveModulePB,
-        bytecode: Vec<u8>,
-    ) -> MoveModuleByteCodeParsed {
-        MoveModuleByteCodeParsed {
-            address: standardize_address(&move_module.address.to_string()),
-            name: move_module.name.clone(),
-            bytecode,
-            exposed_functions: move_module
-                .exposed_functions
-                .iter()
-                .map(|move_func| serde_json::to_value(move_func).unwrap())
-                .collect(),
-            friends: move_module
-                .friends
-                .iter()
-                .map(|move_module_id| serde_json::to_value(move_module_id).unwrap())
-                .collect(),
-            structs: move_module
-                .structs
-                .iter()
-                .map(|move_struct| serde_json::to_value(move_struct).unwrap())
-                .collect(),
-        }
-    }
+    
 }
